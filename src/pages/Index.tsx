@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,12 +17,8 @@ const Index = () => {
   }, [isAuthenticated, navigate]);
 
   const handleLogin = () => {
-    // For demo purposes
-    login({
-      username: 'admin',
-      password: 'admin123',
-      role: 'admin'
-    });
+    // For demo purposes - calling login with username and password separately
+    login('admin', 'admin123');
     
     toast({
       title: "تم تسجيل الدخول",
