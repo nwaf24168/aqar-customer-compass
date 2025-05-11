@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -5,10 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const DataEntry = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   return (
     <div className="container mx-auto py-6">
@@ -42,37 +45,46 @@ const DataEntry = () => {
         
         <TabsContent value="performance" className="mt-6">
           <PerformanceMetricsForm onSubmit={(data) => {
-            // In a real app, this would save to Supabase
+            // Save to localStorage
+            localStorage.setItem('performanceMetrics', JSON.stringify(data));
             console.log('Saving performance metrics:', data);
             toast({
               title: "تم الحفظ",
               description: "تم حفظ بيانات مؤشرات الأداء بنجاح",
             });
             
-            // Here we would update a global state or context
-            // For now we'll just log to console
+            // Navigate to dashboard to see the changes
+            navigate('/dashboard');
           }} />
         </TabsContent>
         
         <TabsContent value="service" className="mt-6">
           <ServiceMetricsForm onSubmit={(data) => {
-            // In a real app, this would save to Supabase
+            // Save to localStorage
+            localStorage.setItem('serviceData', JSON.stringify(data));
             console.log('Saving service metrics:', data);
             toast({
               title: "تم الحفظ",
               description: "تم حفظ بيانات خدمة العملاء بنجاح",
             });
+            
+            // Navigate to dashboard to see the changes
+            navigate('/dashboard');
           }} />
         </TabsContent>
         
         <TabsContent value="satisfaction" className="mt-6">
           <SatisfactionForm onSubmit={(data) => {
-            // In a real app, this would save to Supabase
+            // Save to localStorage
+            localStorage.setItem('satisfactionData', JSON.stringify(data));
             console.log('Saving satisfaction data:', data);
             toast({
               title: "تم الحفظ",
               description: "تم حفظ بيانات رضا العملاء بنجاح",
             });
+            
+            // Navigate to dashboard to see the changes
+            navigate('/dashboard');
           }} />
         </TabsContent>
       </Tabs>
@@ -101,7 +113,11 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
     { id: 'conversionRate', label: 'معدل التحول', goal: 2, value: 2, achieved: true },
   ];
   
-  const [metrics, setMetrics] = useState(initialMetrics);
+  // Load saved data from localStorage if available
+  const [metrics, setMetrics] = useState(() => {
+    const savedData = localStorage.getItem('performanceMetrics');
+    return savedData ? JSON.parse(savedData) : initialMetrics;
+  });
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,7 +202,7 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
 };
 
 const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
-  const categories = [
+  const initialCategories = [
     {
       title: 'المكالمات',
       metrics: [
@@ -219,12 +235,38 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
     },
   ];
 
+  // Load saved data from localStorage if available
+  const [categories, setCategories] = useState(() => {
+    const savedData = localStorage.getItem('serviceData');
+    return savedData ? JSON.parse(savedData) : initialCategories;
+  });
+
+  const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      const category = {...newCategories[categoryIndex]};
+      category.metrics = category.metrics.map(metric => {
+        if (metric.id === metricId) {
+          return {...metric, value};
+        }
+        return metric;
+      });
+      newCategories[categoryIndex] = category;
+      return newCategories;
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(categories);
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-xl font-bold">بيانات خدمة العملاء</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {categories.map((category) => (
+        {categories.map((category, categoryIndex) => (
           <Card key={category.title} className="p-6 bg-card/50">
             <h3 className="font-bold text-lg mb-4">{category.title}</h3>
             
@@ -235,7 +277,8 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
                   <Input
                     id={metric.id}
                     type="number"
-                    defaultValue={metric.value}
+                    value={metric.value}
+                    onChange={(e) => updateMetricValue(categoryIndex, metric.id, parseInt(e.target.value, 10))}
                     dir="ltr"
                     className="text-left"
                   />
@@ -261,7 +304,7 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
 };
 
 const SatisfactionForm = ({ onSubmit }: FormProps) => {
-  const categories = [
+  const initialCategories = [
     {
       title: 'الحل من أول مرة',
       metrics: [
@@ -294,12 +337,43 @@ const SatisfactionForm = ({ onSubmit }: FormProps) => {
     },
   ];
 
+  // Load saved data from localStorage if available
+  const [categories, setCategories] = useState(() => {
+    const savedData = localStorage.getItem('satisfactionData');
+    return savedData ? JSON.parse(savedData) : initialCategories;
+  });
+
+  const [comments, setComments] = useState(() => {
+    return localStorage.getItem('satisfactionComments') || '';
+  });
+
+  const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      const category = {...newCategories[categoryIndex]};
+      category.metrics = category.metrics.map(metric => {
+        if (metric.id === metricId) {
+          return {...metric, value};
+        }
+        return metric;
+      });
+      newCategories[categoryIndex] = category;
+      return newCategories;
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('satisfactionComments', comments);
+    onSubmit({categories, comments});
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-xl font-bold">بيانات رضا العملاء</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {categories.map((category) => (
+        {categories.map((category, categoryIndex) => (
           <Card key={category.title} className="p-6 bg-card/50">
             <h3 className="font-bold text-lg mb-4">{category.title}</h3>
             
@@ -310,7 +384,8 @@ const SatisfactionForm = ({ onSubmit }: FormProps) => {
                   <Input
                     id={metric.id}
                     type="number"
-                    defaultValue={metric.value}
+                    value={metric.value}
+                    onChange={(e) => updateMetricValue(categoryIndex, metric.id, parseInt(e.target.value, 10))}
                     dir="ltr"
                     className="text-left"
                   />
@@ -326,6 +401,8 @@ const SatisfactionForm = ({ onSubmit }: FormProps) => {
         <Textarea 
           placeholder="أضف تعليقاتك هنا..." 
           className="min-h-32"
+          value={comments}
+          onChange={(e) => setComments(e.target.value)}
         />
       </Card>
       

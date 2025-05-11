@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { ArrowUp, ArrowDown, Users, Clock, LineChart, Percent } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 
 // This is mock data that would normally come from Supabase
-const initialMetrics = [
+const defaultMetrics = [
   {
     id: '1',
     name: 'جودة التسليم',
@@ -129,8 +128,8 @@ const initialMetrics = [
   },
 ];
 
-// Service data
-const serviceData = [
+// Default service data
+const defaultServiceData = [
   {
     title: 'المكالمات',
     items: [
@@ -166,8 +165,8 @@ const serviceData = [
   },
 ];
 
-// Customer satisfaction data
-const satisfactionData = [
+// Default customer satisfaction data
+const defaultSatisfactionData = [
   {
     title: 'نسبة الحل من أول مرة',
     percentage: '74.0%',
@@ -195,45 +194,169 @@ const getMetricStatusColor = (value: number, goal: number) => {
   }
 };
 
+// Convert performance metrics from form to dashboard format
+const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
+  if (!formMetrics) return defaultMetrics;
+
+  const iconMap: Record<string, React.ReactNode> = {
+    'deliveryQuality': <LineChart className="h-6 w-6" />,
+    'oldClientReferral': <Users className="h-6 w-6" />,
+    'afterYearReferral': <Users className="h-6 w-6" />,
+    'newClientReferral': <Users className="h-6 w-6" />,
+    'csat': <Users className="h-6 w-6" />,
+    'callResponseRate': <Clock className="h-6 w-6" />,
+    'responseTime': <Clock className="h-6 w-6" />,
+    'maintenanceQuality': <LineChart className="h-6 w-6" />,
+    'conversionRate': <Percent className="h-6 w-6" />,
+    'facilityManagementQuality': <LineChart className="h-6 w-6" />,
+    'reopenRequests': <LineChart className="h-6 w-6" />,
+    'maintenanceClosureSpeed': <Clock className="h-6 w-6" />,
+  };
+  
+  const nameMap: Record<string, string> = {
+    'deliveryQuality': 'جودة التسليم',
+    'oldClientReferral': 'نسبة الترشيح للعملاء القدامى',
+    'afterYearReferral': 'نسبة الترشيح بعد السنة',
+    'newClientReferral': 'نسبة الترشيح للعملاء الجدد',
+    'csat': 'راحة العميل (CSAT)',
+    'callResponseRate': 'معدل الرد على المكالمات',
+    'responseTime': 'عدد الثواني للرد',
+    'maintenanceQuality': 'جودة الصيانة',
+    'conversionRate': 'معدل التحول',
+    'facilityManagementQuality': 'جودة إدارة المرافق',
+    'reopenRequests': 'عدد إعادة فتح طلب',
+    'maintenanceClosureSpeed': 'سرعة إغلاق طلبات الصيانة',
+  };
+
+  const metrics = formMetrics.map((metric, index) => {
+    const achieved = metric.value >= metric.goal;
+    const color = getMetricStatusColor(metric.value, metric.goal);
+    const name = nameMap[metric.id] || metric.label || 'مؤشر';
+    const icon = iconMap[metric.id] || <LineChart className="h-6 w-6" />;
+    
+    return {
+      id: String(index + 1),
+      name,
+      value: metric.value,
+      goal: metric.goal,
+      change: Math.random() * 5, // Just a random change for now
+      icon,
+      achieved,
+      color,
+    };
+  });
+  
+  return metrics;
+};
+
+// Convert service data from form to dashboard format
+const convertServiceDataToFormat = (formCategories: any[]): any[] => {
+  if (!formCategories) return defaultServiceData;
+
+  return formCategories.map(category => {
+    const items = [...category.metrics];
+    const total = items.reduce((sum, item) => sum + item.value, 0);
+    
+    if (category.title === 'المكالمات') {
+      items.push({ name: 'إجمالي المكالمات', value: total });
+    } else if (category.title === 'الاستفسارات') {
+      items.push({ name: 'إجمالي الاستفسارات', value: total });
+    } else if (category.title === 'طلبات الصيانة') {
+      items.push({ name: 'إجمالي طلبات الصيانة', value: total });
+    }
+    
+    return {
+      title: category.title,
+      items: items.map(item => ({
+        name: item.label || item.name,
+        value: item.value
+      }))
+    };
+  });
+};
+
+// Calculate satisfaction percentages from form data
+const calculateSatisfactionPercentages = (satisfactionData: any): any[] => {
+  if (!satisfactionData || !satisfactionData.categories) return defaultSatisfactionData;
+
+  const { categories } = satisfactionData;
+  
+  const calculatePercentage = (category: any) => {
+    const total = category.metrics.reduce((sum: number, metric: any) => sum + metric.value, 0);
+    if (total === 0) return 0;
+    
+    const weightedSum = 
+      category.metrics[0].value * 5 + // راضي جداً (5 نقاط)
+      category.metrics[1].value * 4 + // راضي (4 نقاط)
+      category.metrics[2].value * 3 + // محايد (3 نقاط)
+      category.metrics[3].value * 2 + // غير راضي (2 نقاط)
+      category.metrics[4].value * 1;  // غير راضي جداً (1 نقطة)
+    
+    return (weightedSum / (total * 5)) * 100;
+  };
+  
+  const firstTimePercentage = calculatePercentage(categories[0]);
+  const closingTimePercentage = calculatePercentage(categories[1]);
+  const serviceQualityPercentage = calculatePercentage(categories[2]);
+  
+  return [
+    {
+      title: 'نسبة الحل من أول مرة',
+      percentage: `${firstTimePercentage.toFixed(1)}%`,
+    },
+    {
+      title: 'رضا العملاء عن مدة الإغلاق',
+      percentage: `${closingTimePercentage.toFixed(1)}%`,
+    },
+    {
+      title: 'رضا العملاء عن الخدمات',
+      percentage: `${serviceQualityPercentage.toFixed(1)}%`,
+    }
+  ];
+};
+
 const Dashboard = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
-  const [metrics, setMetrics] = useState(initialMetrics);
+  const [metrics, setMetrics] = useState(defaultMetrics);
+  const [serviceData, setServiceData] = useState(defaultServiceData);
+  const [satisfactionData, setSatisfactionData] = useState(defaultSatisfactionData);
+  const [customerComments, setCustomerComments] = useState('');
   const { toast } = useToast();
   
-  // This effect would normally fetch data from Supabase
+  // Load saved data from localStorage
   useEffect(() => {
-    // In a real implementation, this would be:
-    // const fetchData = async () => {
-    //   const { data, error } = await supabase
-    //     .from('metrics')
-    //     .select('*')
-    //     .eq('period', period);
-    //   
-    //   if (data) {
-    //     setMetrics(data);
-    //   }
-    // };
-    // 
-    // fetchData();
+    // Load performance metrics
+    const savedPerformanceMetrics = localStorage.getItem('performanceMetrics');
+    if (savedPerformanceMetrics) {
+      const parsedMetrics = JSON.parse(savedPerformanceMetrics);
+      setMetrics(convertPerformanceMetricsToFormat(parsedMetrics));
+    }
     
-    // For now, we'll use the mock data but update the colors
-    const updatedMetrics = initialMetrics.map(metric => {
-      // Calculate if the goal is achieved
-      const isAchieved = metric.value >= metric.goal;
+    // Load service data
+    const savedServiceData = localStorage.getItem('serviceData');
+    if (savedServiceData) {
+      const parsedServiceData = JSON.parse(savedServiceData);
+      setServiceData(convertServiceDataToFormat(parsedServiceData));
+    }
+    
+    // Load satisfaction data
+    const savedSatisfactionData = localStorage.getItem('satisfactionData');
+    if (savedSatisfactionData) {
+      const parsedSatisfactionData = JSON.parse(savedSatisfactionData);
+      setSatisfactionData(calculateSatisfactionPercentages(parsedSatisfactionData));
       
-      // Set the color based on how close to the goal
-      const color = getMetricStatusColor(metric.value, metric.goal);
-      
-      return {
-        ...metric,
-        achieved: isAchieved,
-        color: color
-      };
-    });
+      // Set customer comments if available
+      if (parsedSatisfactionData.comments) {
+        setCustomerComments(parsedSatisfactionData.comments);
+      }
+    }
     
-    setMetrics(updatedMetrics);
-    
-  }, [period]);
+    // Load comments separately as well
+    const savedComments = localStorage.getItem('satisfactionComments');
+    if (savedComments) {
+      setCustomerComments(savedComments);
+    }
+  }, []);
 
   return (
     <div className="container mx-auto py-6">
@@ -290,7 +413,13 @@ const Dashboard = () => {
 
       <div>
         <h2 className="text-xl font-bold mb-4">ملاحظات العملاء</h2>
-        <Card className="bg-card/50 p-6 min-h-24"></Card>
+        <Card className="bg-card/50 p-6 min-h-24">
+          {customerComments ? (
+            <p className="whitespace-pre-line">{customerComments}</p>
+          ) : (
+            <p className="text-muted-foreground">لا توجد ملاحظات حالياً</p>
+          )}
+        </Card>
       </div>
     </div>
   );
