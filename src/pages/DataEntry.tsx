@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,15 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 const DataEntry = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
   const { toast } = useToast();
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    toast({
-      title: "تم الحفظ",
-      description: "تم حفظ البيانات بنجاح",
-    });
-  };
   
   return (
     <div className="container mx-auto py-6">
@@ -51,15 +41,39 @@ const DataEntry = () => {
         </TabsList>
         
         <TabsContent value="performance" className="mt-6">
-          <PerformanceMetricsForm onSubmit={handleSubmit} />
+          <PerformanceMetricsForm onSubmit={(data) => {
+            // In a real app, this would save to Supabase
+            console.log('Saving performance metrics:', data);
+            toast({
+              title: "تم الحفظ",
+              description: "تم حفظ بيانات مؤشرات الأداء بنجاح",
+            });
+            
+            // Here we would update a global state or context
+            // For now we'll just log to console
+          }} />
         </TabsContent>
         
         <TabsContent value="service" className="mt-6">
-          <ServiceMetricsForm onSubmit={handleSubmit} />
+          <ServiceMetricsForm onSubmit={(data) => {
+            // In a real app, this would save to Supabase
+            console.log('Saving service metrics:', data);
+            toast({
+              title: "تم الحفظ",
+              description: "تم حفظ بيانات خدمة العملاء بنجاح",
+            });
+          }} />
         </TabsContent>
         
         <TabsContent value="satisfaction" className="mt-6">
-          <SatisfactionForm onSubmit={handleSubmit} />
+          <SatisfactionForm onSubmit={(data) => {
+            // In a real app, this would save to Supabase
+            console.log('Saving satisfaction data:', data);
+            toast({
+              title: "تم الحفظ",
+              description: "تم حفظ بيانات رضا العملاء بنجاح",
+            });
+          }} />
         </TabsContent>
       </Tabs>
     </div>
@@ -67,16 +81,16 @@ const DataEntry = () => {
 };
 
 interface FormProps {
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (data: any) => void;
 }
 
 const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
-  const metrics = [
+  // Define initial metrics
+  const initialMetrics = [
     { id: 'deliveryQuality', label: 'جودة التسليم', goal: 100, value: 98, achieved: true },
     { id: 'oldClientReferral', label: 'نسبة الترشيح للعملاء القدامى', goal: 30, value: 30, achieved: true },
     { id: 'afterYearReferral', label: 'نسبة الترشيح بعد السنة', goal: 65, value: 67, achieved: true },
     { id: 'newClientReferral', label: 'نسبة الترشيح للعملاء الجدد', goal: 65, value: 65, achieved: true },
-    { id: 'deliveryQuality', label: 'جودة التسليم', goal: 100, value: 98, achieved: true },
     { id: 'maintenanceQuality', label: 'جودة الصيانة', goal: 100, value: 96, achieved: true },
     { id: 'responseTime', label: 'عدد الثواني للرد', goal: 3, value: 2.8, achieved: true },
     { id: 'csat', label: 'راحة العميل (CSAT)', goal: 70, value: 74, achieved: true },
@@ -84,40 +98,84 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
     { id: 'maintenanceClosureSpeed', label: 'سرعة إغلاق طلبات الصيانة', goal: 3, value: 2.5, achieved: true },
     { id: 'reopenRequests', label: 'عدد إعادة فتح طلب', goal: 0, value: 0, achieved: true },
     { id: 'facilityManagementQuality', label: 'جودة إدارة المرافق', goal: 80, value: 80, achieved: true },
+    { id: 'conversionRate', label: 'معدل التحول', goal: 2, value: 2, achieved: true },
   ];
+  
+  const [metrics, setMetrics] = useState(initialMetrics);
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(metrics);
+  };
+  
+  const updateMetricValue = (id: string, value: number) => {
+    setMetrics(prevMetrics => 
+      prevMetrics.map(metric => {
+        if (metric.id === id) {
+          const achieved = value >= metric.goal;
+          return { ...metric, value, achieved };
+        }
+        return metric;
+      })
+    );
+  };
+
+  // Function to determine achievement status and color
+  const getAchievementStatus = (value: number, goal: number) => {
+    if (value >= goal) {
+      return { 
+        text: 'تم تحقيق الهدف', 
+        className: 'bg-emerald-500/20 text-emerald-500'
+      };
+    }
+    
+    const ratio = (value / goal) * 100;
+    if (ratio >= 90) {
+      return { 
+        text: 'قريب من الهدف', 
+        className: 'bg-amber-500/20 text-amber-500'
+      };
+    }
+    
+    return { 
+      text: 'لم يتم تحقيق الهدف', 
+      className: 'bg-red-500/20 text-red-500'
+    };
+  };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-xl font-bold">مؤشرات الأداء الرئيسية - أسبوعي</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {metrics.map((metric) => (
-          <Card key={metric.id} className="p-6 bg-card/50">
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <label htmlFor={metric.id} className="font-medium">{metric.label}</label>
-                <span className="text-sm">الهدف: {metric.goal}</span>
+        {metrics.map((metric) => {
+          const status = getAchievementStatus(metric.value, metric.goal);
+          
+          return (
+            <Card key={metric.id} className="p-6 bg-card/50">
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <label htmlFor={metric.id} className="font-medium">{metric.label}</label>
+                  <span className="text-sm">الهدف: {metric.goal}</span>
+                </div>
+                
+                <Input 
+                  id={metric.id}
+                  type="number"
+                  value={metric.value}
+                  onChange={(e) => updateMetricValue(metric.id, parseFloat(e.target.value))}
+                  step="0.1"
+                  dir="ltr"
+                  className="text-left"
+                />
+                
+                <div className={`py-1 px-3 text-center text-sm rounded ${status.className}`}>
+                  {status.text}
+                </div>
               </div>
-              
-              <Input 
-                id={metric.id}
-                type="number"
-                defaultValue={metric.value}
-                step="0.1"
-                dir="ltr"
-                className="text-left"
-              />
-              
-              <div className={`py-1 px-3 text-center text-sm rounded ${
-                metric.achieved 
-                  ? 'bg-emerald-500/20 text-emerald-500' 
-                  : 'bg-red-500/20 text-red-500'
-              }`}>
-                {metric.achieved ? 'تم تحقيق الهدف' : 'لم يتم تحقيق الهدف'}
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
       
       <div className="flex justify-end">

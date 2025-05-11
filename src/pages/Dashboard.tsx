@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowUp, ArrowDown, Users, Clock, LineChart, Percent } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // This is mock data that would normally come from Supabase
-const metrics = [
+const initialMetrics = [
   {
     id: '1',
     name: 'جودة التسليم',
@@ -181,8 +182,58 @@ const satisfactionData = [
   }
 ];
 
+// Helper function to determine the color based on achievement level
+const getMetricStatusColor = (value: number, goal: number) => {
+  const achievementRatio = (value / goal) * 100;
+  
+  if (value >= goal) {
+    return 'bg-emerald-500/20 text-emerald-500'; // Green for achieved
+  } else if (achievementRatio >= 90) {
+    return 'bg-amber-500/20 text-amber-500'; // Yellow for close to goal (90%+)
+  } else {
+    return 'bg-red-500/20 text-red-500'; // Red for far from goal
+  }
+};
+
 const Dashboard = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
+  const [metrics, setMetrics] = useState(initialMetrics);
+  const { toast } = useToast();
+  
+  // This effect would normally fetch data from Supabase
+  useEffect(() => {
+    // In a real implementation, this would be:
+    // const fetchData = async () => {
+    //   const { data, error } = await supabase
+    //     .from('metrics')
+    //     .select('*')
+    //     .eq('period', period);
+    //   
+    //   if (data) {
+    //     setMetrics(data);
+    //   }
+    // };
+    // 
+    // fetchData();
+    
+    // For now, we'll use the mock data but update the colors
+    const updatedMetrics = initialMetrics.map(metric => {
+      // Calculate if the goal is achieved
+      const isAchieved = metric.value >= metric.goal;
+      
+      // Set the color based on how close to the goal
+      const color = getMetricStatusColor(metric.value, metric.goal);
+      
+      return {
+        ...metric,
+        achieved: isAchieved,
+        color: color
+      };
+    });
+    
+    setMetrics(updatedMetrics);
+    
+  }, [period]);
 
   return (
     <div className="container mx-auto py-6">
@@ -258,6 +309,20 @@ interface MetricCardProps {
 }
 
 const MetricCard = ({ metric }: MetricCardProps) => {
+  // Get the status text and badge color based on achievement
+  const getStatusBadge = () => {
+    if (metric.achieved) {
+      return <div className="py-1 px-2 text-xs bg-emerald-500/20 text-emerald-500 rounded-md">تم تحقيق الهدف</div>;
+    }
+    
+    const ratio = (metric.value / metric.goal) * 100;
+    if (ratio >= 90) {
+      return <div className="py-1 px-2 text-xs bg-amber-500/20 text-amber-500 rounded-md">قريب من الهدف</div>;
+    }
+    
+    return <div className="py-1 px-2 text-xs bg-red-500/20 text-red-500 rounded-md">لم يتم تحقيق الهدف</div>;
+  };
+
   return (
     <Card className="bg-card/50 p-6">
       <div className="flex flex-col h-full">
@@ -289,6 +354,9 @@ const MetricCard = ({ metric }: MetricCardProps) => {
             الهدف: {metric.goal}
             {metric.name.includes('نسبة') || metric.name.includes('جودة') ? '%' : 
               metric.name.includes('عدد الثواني') ? ' ثواني' : ''}
+          </div>
+          <div className="mt-2">
+            {getStatusBadge()}
           </div>
         </div>
       </div>
