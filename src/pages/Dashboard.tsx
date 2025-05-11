@@ -5,7 +5,7 @@ import { ArrowUp, ArrowDown, Users, Clock, LineChart, Percent } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 
 // This is mock data that would normally come from Supabase
-const defaultMetrics = [
+const defaultWeeklyMetrics = [
   {
     id: '1',
     name: 'جودة التسليم',
@@ -128,8 +128,131 @@ const defaultMetrics = [
   },
 ];
 
+const defaultYearlyMetrics = [
+  {
+    id: '1',
+    name: 'جودة التسليم',
+    value: 95,
+    goal: 100,
+    change: 2.5,
+    icon: <LineChart className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '2',
+    name: 'نسبة الترشيح للعملاء القدامى',
+    value: 32,
+    goal: 35,
+    change: 3.8,
+    icon: <Users className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '3',
+    name: 'نسبة الترشيح بعد السنة',
+    value: 65,
+    goal: 70,
+    change: 5.1,
+    icon: <Users className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '4',
+    name: 'نسبة الترشيح للعملاء الجدد',
+    value: 68,
+    goal: 70,
+    change: 4.4,
+    icon: <Users className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '5',
+    name: 'راحة العميل (CSAT)',
+    value: 76,
+    goal: 75,
+    change: 6.7,
+    icon: <Users className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-emerald-500/20 text-emerald-500',
+  },
+  {
+    id: '6',
+    name: 'معدل الرد على المكالمات',
+    value: 75,
+    goal: 85,
+    change: 7.3,
+    icon: <Clock className="h-6 w-6" />,
+    achieved: false,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '7',
+    name: 'عدد الثواني للرد',
+    value: 3.0,
+    goal: 3,
+    change: 0,
+    icon: <Clock className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-emerald-500/20 text-emerald-500',
+  },
+  {
+    id: '8',
+    name: 'جودة الصيانة',
+    value: 90,
+    goal: 100,
+    change: 5.8,
+    icon: <LineChart className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '9',
+    name: 'معدل التحول',
+    value: 2.3,
+    goal: 2.5,
+    change: 15.0,
+    icon: <Percent className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '10',
+    name: 'جودة إدارة المرافق',
+    value: 83,
+    goal: 85,
+    change: 3.8,
+    icon: <LineChart className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-amber-500/20 text-amber-500',
+  },
+  {
+    id: '11',
+    name: 'عدد إعادة فتح طلب',
+    value: 1,
+    goal: 0,
+    change: 0,
+    icon: <LineChart className="h-6 w-6" />,
+    achieved: false,
+    color: 'bg-red-500/20 text-red-500',
+  },
+  {
+    id: '12',
+    name: 'سرعة إغلاق طلبات الصيانة',
+    value: 2.5,
+    goal: 2.8,
+    change: 10.7,
+    icon: <Clock className="h-6 w-6" />,
+    achieved: true,
+    color: 'bg-emerald-500/20 text-emerald-500',
+  },
+];
+
 // Default service data
-const defaultServiceData = [
+const defaultWeeklyServiceData = [
   {
     title: 'المكالمات',
     items: [
@@ -165,8 +288,44 @@ const defaultServiceData = [
   },
 ];
 
+const defaultYearlyServiceData = [
+  {
+    title: 'المكالمات',
+    items: [
+      { name: 'شكاوى', value: 350 },
+      { name: 'طلبات تواصل', value: 520 },
+      { name: 'طلبات صيانة', value: 780 },
+      { name: 'استفسارات', value: 650 },
+      { name: 'مهتمين مكاتب', value: 420 },
+      { name: 'مهتمين مشاريع', value: 480 },
+      { name: 'عملاء مهتمين', value: 520 },
+      { name: 'إجمالي المكالمات', value: 3720 },
+    ]
+  },
+  {
+    title: 'الاستفسارات',
+    items: [
+      { name: 'استفسارات عامة', value: 240 },
+      { name: 'طلب أوراق', value: 120 },
+      { name: 'استفسارات مشكوك', value: 90 },
+      { name: 'إيجارات شقق', value: 150 },
+      { name: 'مشاريع متاحة', value: 95 },
+      { name: 'إجمالي الاستفسارات', value: 695 },
+    ]
+  },
+  {
+    title: 'حالة طلبات الصيانة',
+    items: [
+      { name: 'تم الإلغاء', value: 60 },
+      { name: 'تم الحل', value: 550 },
+      { name: 'قيد المعالجة', value: 170 },
+      { name: 'إجمالي طلبات الصيانة', value: 780 },
+    ]
+  },
+];
+
 // Default customer satisfaction data
-const defaultSatisfactionData = [
+const defaultWeeklySatisfactionData = [
   {
     title: 'نسبة الحل من أول مرة',
     percentage: '74.0%',
@@ -178,6 +337,21 @@ const defaultSatisfactionData = [
   {
     title: 'رضا العملاء عن الخدمات',
     percentage: '72.0%',
+  }
+];
+
+const defaultYearlySatisfactionData = [
+  {
+    title: 'نسبة الحل من أول مرة',
+    percentage: '75.2%',
+  },
+  {
+    title: 'رضا العملاء عن مدة الإغلاق',
+    percentage: '71.8%',
+  },
+  {
+    title: 'رضا العملاء عن الخدمات',
+    percentage: '73.5%',
   }
 ];
 
@@ -196,7 +370,7 @@ const getMetricStatusColor = (value: number, goal: number) => {
 
 // Convert performance metrics from form to dashboard format
 const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
-  if (!formMetrics) return defaultMetrics;
+  if (!formMetrics) return defaultWeeklyMetrics;
 
   const iconMap: Record<string, React.ReactNode> = {
     'deliveryQuality': <LineChart className="h-6 w-6" />,
@@ -251,7 +425,7 @@ const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
 
 // Convert service data from form to dashboard format
 const convertServiceDataToFormat = (formCategories: any[]): any[] => {
-  if (!formCategories) return defaultServiceData;
+  if (!formCategories) return defaultWeeklyServiceData;
 
   return formCategories.map(category => {
     const items = [...category.metrics];
@@ -277,7 +451,7 @@ const convertServiceDataToFormat = (formCategories: any[]): any[] => {
 
 // Calculate satisfaction percentages from form data
 const calculateSatisfactionPercentages = (satisfactionData: any): any[] => {
-  if (!satisfactionData || !satisfactionData.categories) return defaultSatisfactionData;
+  if (!satisfactionData || !satisfactionData.categories) return defaultWeeklySatisfactionData;
 
   const { categories } = satisfactionData;
   
@@ -317,30 +491,39 @@ const calculateSatisfactionPercentages = (satisfactionData: any): any[] => {
 
 const Dashboard = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
-  const [metrics, setMetrics] = useState(defaultMetrics);
-  const [serviceData, setServiceData] = useState(defaultServiceData);
-  const [satisfactionData, setSatisfactionData] = useState(defaultSatisfactionData);
+  const [metrics, setMetrics] = useState(defaultWeeklyMetrics);
+  const [serviceData, setServiceData] = useState(defaultWeeklyServiceData);
+  const [satisfactionData, setSatisfactionData] = useState(defaultWeeklySatisfactionData);
   const [customerComments, setCustomerComments] = useState('');
   const { toast } = useToast();
   
-  // Load saved data from localStorage
+  // Load saved data from localStorage based on the selected period
   useEffect(() => {
-    // Load performance metrics
-    const savedPerformanceMetrics = localStorage.getItem('performanceMetrics');
+    // Load performance metrics for the selected period
+    const perfStorageKey = `performanceMetrics_${period}`;
+    const savedPerformanceMetrics = localStorage.getItem(perfStorageKey);
     if (savedPerformanceMetrics) {
       const parsedMetrics = JSON.parse(savedPerformanceMetrics);
       setMetrics(convertPerformanceMetricsToFormat(parsedMetrics));
+    } else {
+      // Use defaults if no saved data
+      setMetrics(period === 'weekly' ? defaultWeeklyMetrics : defaultYearlyMetrics);
     }
     
-    // Load service data
-    const savedServiceData = localStorage.getItem('serviceData');
+    // Load service data for the selected period
+    const serviceStorageKey = `serviceData_${period}`;
+    const savedServiceData = localStorage.getItem(serviceStorageKey);
     if (savedServiceData) {
       const parsedServiceData = JSON.parse(savedServiceData);
       setServiceData(convertServiceDataToFormat(parsedServiceData));
+    } else {
+      // Use defaults if no saved data
+      setServiceData(period === 'weekly' ? defaultWeeklyServiceData : defaultYearlyServiceData);
     }
     
-    // Load satisfaction data
-    const savedSatisfactionData = localStorage.getItem('satisfactionData');
+    // Load satisfaction data for the selected period
+    const satisfactionStorageKey = `satisfactionData_${period}`;
+    const savedSatisfactionData = localStorage.getItem(satisfactionStorageKey);
     if (savedSatisfactionData) {
       const parsedSatisfactionData = JSON.parse(savedSatisfactionData);
       setSatisfactionData(calculateSatisfactionPercentages(parsedSatisfactionData));
@@ -349,14 +532,20 @@ const Dashboard = () => {
       if (parsedSatisfactionData.comments) {
         setCustomerComments(parsedSatisfactionData.comments);
       }
+    } else {
+      // Use defaults if no saved data
+      setSatisfactionData(period === 'weekly' ? defaultWeeklySatisfactionData : defaultYearlySatisfactionData);
     }
     
-    // Load comments separately as well
-    const savedComments = localStorage.getItem('satisfactionComments');
+    // Load comments separately as well for the selected period
+    const commentsKey = `satisfactionComments_${period}`;
+    const savedComments = localStorage.getItem(commentsKey);
     if (savedComments) {
       setCustomerComments(savedComments);
+    } else {
+      setCustomerComments('');
     }
-  }, []);
+  }, [period]);
 
   return (
     <div className="container mx-auto py-6">
@@ -382,7 +571,9 @@ const Dashboard = () => {
       </div>
 
       <div className="mb-10">
-        <h2 className="text-xl font-bold mb-4">مؤشرات الأداء الرئيسية الأسبوعية</h2>
+        <h2 className="text-xl font-bold mb-4">
+          مؤشرات الأداء الرئيسية {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+        </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {metrics.map((metric) => (
@@ -392,7 +583,9 @@ const Dashboard = () => {
       </div>
 
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">خدمة العملاء الأسبوعية</h2>
+        <h2 className="text-xl font-bold mb-4">
+          خدمة العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+        </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {serviceData.map((category, idx) => (
@@ -402,7 +595,9 @@ const Dashboard = () => {
       </div>
 
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">رضا العملاء عن الخدمات</h2>
+        <h2 className="text-xl font-bold mb-4">
+          رضا العملاء عن الخدمات {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+        </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {satisfactionData.map((item, idx) => (
@@ -412,7 +607,9 @@ const Dashboard = () => {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold mb-4">ملاحظات العملاء</h2>
+        <h2 className="text-xl font-bold mb-4">
+          ملاحظات العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+        </h2>
         <Card className="bg-card/50 p-6 min-h-24">
           {customerComments ? (
             <p className="whitespace-pre-line">{customerComments}</p>

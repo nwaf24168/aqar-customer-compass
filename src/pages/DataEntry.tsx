@@ -44,48 +44,65 @@ const DataEntry = () => {
         </TabsList>
         
         <TabsContent value="performance" className="mt-6">
-          <PerformanceMetricsForm onSubmit={(data) => {
-            // Save to localStorage
-            localStorage.setItem('performanceMetrics', JSON.stringify(data));
-            console.log('Saving performance metrics:', data);
-            toast({
-              title: "تم الحفظ",
-              description: "تم حفظ بيانات مؤشرات الأداء بنجاح",
-            });
-            
-            // Navigate to dashboard to see the changes
-            navigate('/dashboard');
-          }} />
+          <PerformanceMetricsForm 
+            period={period}
+            onSubmit={(data) => {
+              // Save to localStorage with period key
+              const storageKey = `performanceMetrics_${period}`;
+              localStorage.setItem(storageKey, JSON.stringify(data));
+              console.log(`Saving ${period} performance metrics:`, data);
+              toast({
+                title: "تم الحفظ",
+                description: `تم حفظ بيانات مؤشرات الأداء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+              });
+              
+              // Navigate to dashboard to see the changes
+              navigate('/dashboard');
+            }} 
+          />
         </TabsContent>
         
         <TabsContent value="service" className="mt-6">
-          <ServiceMetricsForm onSubmit={(data) => {
-            // Save to localStorage
-            localStorage.setItem('serviceData', JSON.stringify(data));
-            console.log('Saving service metrics:', data);
-            toast({
-              title: "تم الحفظ",
-              description: "تم حفظ بيانات خدمة العملاء بنجاح",
-            });
-            
-            // Navigate to dashboard to see the changes
-            navigate('/dashboard');
-          }} />
+          <ServiceMetricsForm 
+            period={period}
+            onSubmit={(data) => {
+              // Save to localStorage with period key
+              const storageKey = `serviceData_${period}`;
+              localStorage.setItem(storageKey, JSON.stringify(data));
+              console.log(`Saving ${period} service metrics:`, data);
+              toast({
+                title: "تم الحفظ",
+                description: `تم حفظ بيانات خدمة العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+              });
+              
+              // Navigate to dashboard to see the changes
+              navigate('/dashboard');
+            }}
+          />
         </TabsContent>
         
         <TabsContent value="satisfaction" className="mt-6">
-          <SatisfactionForm onSubmit={(data) => {
-            // Save to localStorage
-            localStorage.setItem('satisfactionData', JSON.stringify(data));
-            console.log('Saving satisfaction data:', data);
-            toast({
-              title: "تم الحفظ",
-              description: "تم حفظ بيانات رضا العملاء بنجاح",
-            });
-            
-            // Navigate to dashboard to see the changes
-            navigate('/dashboard');
-          }} />
+          <SatisfactionForm 
+            period={period}
+            onSubmit={(data) => {
+              // Save to localStorage with period key
+              const storageKey = `satisfactionData_${period}`;
+              localStorage.setItem(storageKey, JSON.stringify(data));
+              
+              // Save comments separately with period key
+              const commentsKey = `satisfactionComments_${period}`;
+              localStorage.setItem(commentsKey, data.comments);
+              
+              console.log(`Saving ${period} satisfaction data:`, data);
+              toast({
+                title: "تم الحفظ",
+                description: `تم حفظ بيانات رضا العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+              });
+              
+              // Navigate to dashboard to see the changes
+              navigate('/dashboard');
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -93,12 +110,13 @@ const DataEntry = () => {
 };
 
 interface FormProps {
+  period: 'weekly' | 'yearly';
   onSubmit: (data: any) => void;
 }
 
-const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
+const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
   // Define initial metrics
-  const initialMetrics = [
+  const initialWeeklyMetrics = [
     { id: 'deliveryQuality', label: 'جودة التسليم', goal: 100, value: 98, achieved: true },
     { id: 'oldClientReferral', label: 'نسبة الترشيح للعملاء القدامى', goal: 30, value: 30, achieved: true },
     { id: 'afterYearReferral', label: 'نسبة الترشيح بعد السنة', goal: 65, value: 67, achieved: true },
@@ -112,12 +130,42 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
     { id: 'facilityManagementQuality', label: 'جودة إدارة المرافق', goal: 80, value: 80, achieved: true },
     { id: 'conversionRate', label: 'معدل التحول', goal: 2, value: 2, achieved: true },
   ];
+
+  const initialYearlyMetrics = [
+    { id: 'deliveryQuality', label: 'جودة التسليم', goal: 100, value: 95, achieved: true },
+    { id: 'oldClientReferral', label: 'نسبة الترشيح للعملاء القدامى', goal: 35, value: 32, achieved: true },
+    { id: 'afterYearReferral', label: 'نسبة الترشيح بعد السنة', goal: 70, value: 65, achieved: true },
+    { id: 'newClientReferral', label: 'نسبة الترشيح للعملاء الجدد', goal: 70, value: 68, achieved: true },
+    { id: 'maintenanceQuality', label: 'جودة الصيانة', goal: 100, value: 90, achieved: true },
+    { id: 'responseTime', label: 'عدد الثواني للرد', goal: 3, value: 3, achieved: true },
+    { id: 'csat', label: 'راحة العميل (CSAT)', goal: 75, value: 76, achieved: true },
+    { id: 'callResponseRate', label: 'معدل الرد على المكالمات', goal: 85, value: 75, achieved: false },
+    { id: 'maintenanceClosureSpeed', label: 'سرعة إغلاق طلبات الصيانة', goal: 2.8, value: 2.5, achieved: true },
+    { id: 'reopenRequests', label: 'عدد إعادة فتح طلب', goal: 0, value: 1, achieved: false },
+    { id: 'facilityManagementQuality', label: 'جودة إدارة المرافق', goal: 85, value: 83, achieved: true },
+    { id: 'conversionRate', label: 'معدل التحول', goal: 2.5, value: 2.3, achieved: true },
+  ];
   
-  // Load saved data from localStorage if available
+  // Load saved data from localStorage based on period
   const [metrics, setMetrics] = useState(() => {
-    const savedData = localStorage.getItem('performanceMetrics');
-    return savedData ? JSON.parse(savedData) : initialMetrics;
+    const storageKey = `performanceMetrics_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      return JSON.parse(savedData);
+    }
+    return period === 'weekly' ? initialWeeklyMetrics : initialYearlyMetrics;
   });
+  
+  // Update metrics when period changes
+  useEffect(() => {
+    const storageKey = `performanceMetrics_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      setMetrics(JSON.parse(savedData));
+    } else {
+      setMetrics(period === 'weekly' ? initialWeeklyMetrics : initialYearlyMetrics);
+    }
+  }, [period]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +209,9 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-xl font-bold">مؤشرات الأداء الرئيسية - أسبوعي</h2>
+      <h2 className="text-xl font-bold">
+        مؤشرات الأداء الرئيسية - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
+      </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {metrics.map((metric) => {
@@ -201,8 +251,8 @@ const PerformanceMetricsForm = ({ onSubmit }: FormProps) => {
   );
 };
 
-const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
-  const initialCategories = [
+const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
+  const initialWeeklyCategories = [
     {
       title: 'المكالمات',
       metrics: [
@@ -235,11 +285,56 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
     },
   ];
 
-  // Load saved data from localStorage if available
+  const initialYearlyCategories = [
+    {
+      title: 'المكالمات',
+      metrics: [
+        { id: 'complaints', label: 'شكاوى', value: 350 },
+        { id: 'contactRequests', label: 'طلبات تواصل', value: 520 },
+        { id: 'maintenanceRequests', label: 'طلبات صيانة', value: 780 },
+        { id: 'inquiries', label: 'استفسارات', value: 650 },
+        { id: 'officeAppointments', label: 'مهتمين مكاتب', value: 420 },
+        { id: 'projectAppointments', label: 'مهتمين مشاريع', value: 480 },
+        { id: 'interestedClients', label: 'عملاء مهتمين', value: 520 },
+      ]
+    },
+    {
+      title: 'الاستفسارات',
+      metrics: [
+        { id: 'generalInquiries', label: 'استفسارات عامة', value: 240 },
+        { id: 'documentRequests', label: 'طلب أوراق', value: 120 },
+        { id: 'suspectInquiries', label: 'استفسارات مشكوك', value: 90 },
+        { id: 'apartmentRentals', label: 'إيجارات شقق', value: 150 },
+        { id: 'availableProjects', label: 'مشاريع متاحة', value: 95 },
+      ]
+    },
+    {
+      title: 'طلبات الصيانة',
+      metrics: [
+        { id: 'cancelled', label: 'ملغية', value: 60 },
+        { id: 'resolved', label: 'منجزة', value: 550 },
+        { id: 'inProgress', label: 'قيد التنفيذ', value: 170 },
+      ]
+    },
+  ];
+
+  // Load saved data from localStorage based on period
   const [categories, setCategories] = useState(() => {
-    const savedData = localStorage.getItem('serviceData');
-    return savedData ? JSON.parse(savedData) : initialCategories;
+    const storageKey = `serviceData_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    return savedData ? JSON.parse(savedData) : (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
   });
+
+  // Update categories when period changes
+  useEffect(() => {
+    const storageKey = `serviceData_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      setCategories(JSON.parse(savedData));
+    } else {
+      setCategories(period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
+    }
+  }, [period]);
 
   const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
     setCategories(prevCategories => {
@@ -263,7 +358,9 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-xl font-bold">بيانات خدمة العملاء</h2>
+      <h2 className="text-xl font-bold">
+        بيانات خدمة العملاء - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
+      </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((category, categoryIndex) => (
@@ -303,8 +400,8 @@ const ServiceMetricsForm = ({ onSubmit }: FormProps) => {
   );
 };
 
-const SatisfactionForm = ({ onSubmit }: FormProps) => {
-  const initialCategories = [
+const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
+  const initialWeeklyCategories = [
     {
       title: 'الحل من أول مرة',
       metrics: [
@@ -337,15 +434,72 @@ const SatisfactionForm = ({ onSubmit }: FormProps) => {
     },
   ];
 
-  // Load saved data from localStorage if available
+  const initialYearlyCategories = [
+    {
+      title: 'الحل من أول مرة',
+      metrics: [
+        { id: 'firstTimeVeryGood', label: 'راضي جداً', value: 420 },
+        { id: 'firstTimeGood', label: 'راضي', value: 500 },
+        { id: 'firstTimeNeutral', label: 'محايد', value: 220 },
+        { id: 'firstTimeBad', label: 'غير راضي', value: 80 },
+        { id: 'firstTimeVeryBad', label: 'غير راضي جداً', value: 30 },
+      ]
+    },
+    {
+      title: 'وقت الإغلاق',
+      metrics: [
+        { id: 'closingTimeVeryGood', label: 'راضي جداً', value: 320 },
+        { id: 'closingTimeGood', label: 'راضي', value: 550 },
+        { id: 'closingTimeNeutral', label: 'محايد', value: 240 },
+        { id: 'closingTimeBad', label: 'غير راضي', value: 90 },
+        { id: 'closingTimeVeryBad', label: 'غير راضي جداً', value: 40 },
+      ]
+    },
+    {
+      title: 'جودة الخدمة',
+      metrics: [
+        { id: 'serviceQualityVeryGood', label: 'راضي جداً', value: 380 },
+        { id: 'serviceQualityGood', label: 'راضي', value: 520 },
+        { id: 'serviceQualityNeutral', label: 'محايد', value: 250 },
+        { id: 'serviceQualityBad', label: 'غير راضي', value: 100 },
+        { id: 'serviceQualityVeryBad', label: 'غير راضي جداً', value: 35 },
+      ]
+    },
+  ];
+
+  // Load saved data from localStorage based on period
   const [categories, setCategories] = useState(() => {
-    const savedData = localStorage.getItem('satisfactionData');
-    return savedData ? JSON.parse(savedData) : initialCategories;
+    const storageKey = `satisfactionData_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      return parsedData.categories || (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
+    }
+    return period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories;
   });
 
   const [comments, setComments] = useState(() => {
-    return localStorage.getItem('satisfactionComments') || '';
+    const commentsKey = `satisfactionComments_${period}`;
+    return localStorage.getItem(commentsKey) || '';
   });
+
+  // Update data when period changes
+  useEffect(() => {
+    // Update categories
+    const storageKey = `satisfactionData_${period}`;
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setCategories(parsedData.categories || (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories));
+    } else {
+      setCategories(period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
+    }
+    
+    // Update comments
+    const commentsKey = `satisfactionComments_${period}`;
+    const savedComments = localStorage.getItem(commentsKey);
+    setComments(savedComments || '');
+  }, [period]);
 
   const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
     setCategories(prevCategories => {
@@ -364,13 +518,14 @@ const SatisfactionForm = ({ onSubmit }: FormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('satisfactionComments', comments);
     onSubmit({categories, comments});
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-xl font-bold">بيانات رضا العملاء</h2>
+      <h2 className="text-xl font-bold">
+        بيانات رضا العملاء - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
+      </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((category, categoryIndex) => (
