@@ -413,7 +413,8 @@ const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
       name,
       value: metric.value,
       goal: metric.goal,
-      change: Math.random() * 5, // Just a random change for now
+      // Format the change to display only 2 decimal places
+      change: Number((Math.random() * 5).toFixed(2)),
       icon,
       achieved,
       color,
@@ -649,6 +650,18 @@ const MetricCard = ({ metric }: MetricCardProps) => {
     return <div className="py-1 px-2 text-xs bg-red-500/20 text-red-500 rounded-md">لم يتم تحقيق الهدف</div>;
   };
 
+  // Format the value to display at most 2 decimal places
+  const formattedValue = typeof metric.value === 'number' 
+    ? Number.isInteger(metric.value) 
+      ? metric.value 
+      : Number(metric.value.toFixed(2))
+    : metric.value;
+
+  // Format the change percentage to display at most 2 decimal places
+  const formattedChange = typeof metric.change === 'number'
+    ? Number(metric.change.toFixed(2))
+    : metric.change;
+
   return (
     <Card className="bg-card/50 p-6">
       <div className="flex flex-col h-full">
@@ -657,7 +670,7 @@ const MetricCard = ({ metric }: MetricCardProps) => {
             {metric.icon}
           </div>
           <span className="flex items-center text-sm">
-            {metric.change}%
+            {formattedChange}%
             {metric.change > 0 ? (
               <ArrowUp className="h-4 w-4 text-emerald-500" />
             ) : (
@@ -669,9 +682,7 @@ const MetricCard = ({ metric }: MetricCardProps) => {
         <div className="mt-4">
           <h3 className="text-sm text-muted-foreground">{metric.name}</h3>
           <div className="mt-1 text-3xl font-bold">
-            {typeof metric.value === 'number' && !Number.isInteger(metric.value)
-              ? metric.value.toFixed(1)
-              : metric.value}
+            {formattedValue}
             {typeof metric.value === 'number' && !Number.isInteger(metric.value)
               ? metric.name.includes('عدد الثواني') ? ' ثانية' : ''
               : metric.name.includes('نسبة') || metric.name.includes('جودة') ? '%' : ''}

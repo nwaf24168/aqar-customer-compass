@@ -29,9 +29,9 @@ const Login = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md text-center mb-10">
         <img 
-          src="/lovable-uploads/0b5c775c-5fa8-48b7-a6aa-f9e988a703a3.png" 
+          src="/lovable-uploads/d1162ea8-970f-4b8b-b651-c22e4e917827.png" 
           alt="شركة الرمز العقارية"
-          className="w-32 h-32 mx-auto mb-8"
+          className="w-32 h-32 mx-auto mb-8 object-contain"
         />
         
         <h1 className="text-3xl font-bold mb-2">مرحباً بك في منصة قسم إدارة راحة العملاء</h1>

@@ -14,9 +14,9 @@ const Sidebar = () => {
     <aside className="w-16 lg:w-64 bg-card border-l border-border shrink-0">
       <div className="h-16 flex items-center justify-center border-b border-border">
         <img 
-          src="/lovable-uploads/0b5c775c-5fa8-48b7-a6aa-f9e988a703a3.png" 
+          src="/lovable-uploads/d1162ea8-970f-4b8b-b651-c22e4e917827.png" 
           alt="الرمز العقارية" 
-          className="h-10 w-10"
+          className="h-10 w-10 object-contain"
         />
       </div>
       
