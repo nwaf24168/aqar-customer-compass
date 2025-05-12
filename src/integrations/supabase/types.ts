@@ -9,7 +9,327 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_data: {
+        Row: {
+          call_complaints: number
+          call_contact_requests: number
+          call_guest_appointments: number
+          call_inquiries: number
+          call_maintenance_requests: number
+          call_office_appointments: number
+          call_project_appointments: number
+          created_at: string
+          created_by: string
+          customer_satisfaction_closing_time: number
+          customer_satisfaction_first_time_resolution: number
+          customer_satisfaction_service_quality: number
+          date: string
+          id: string
+          nps_after_year: number
+          nps_new_clients: number
+          nps_old_clients: number
+          period: string
+        }
+        Insert: {
+          call_complaints: number
+          call_contact_requests: number
+          call_guest_appointments: number
+          call_inquiries: number
+          call_maintenance_requests: number
+          call_office_appointments: number
+          call_project_appointments: number
+          created_at?: string
+          created_by: string
+          customer_satisfaction_closing_time: number
+          customer_satisfaction_first_time_resolution: number
+          customer_satisfaction_service_quality: number
+          date: string
+          id?: string
+          nps_after_year: number
+          nps_new_clients: number
+          nps_old_clients: number
+          period: string
+        }
+        Update: {
+          call_complaints?: number
+          call_contact_requests?: number
+          call_guest_appointments?: number
+          call_inquiries?: number
+          call_maintenance_requests?: number
+          call_office_appointments?: number
+          call_project_appointments?: number
+          created_at?: string
+          created_by?: string
+          customer_satisfaction_closing_time?: number
+          customer_satisfaction_first_time_resolution?: number
+          customer_satisfaction_service_quality?: number
+          date?: string
+          id?: string
+          nps_after_year?: number
+          nps_new_clients?: number
+          nps_old_clients?: number
+          period?: string
+        }
+        Relationships: []
+      }
+      complaints: {
+        Row: {
+          action: string | null
+          client_name: string
+          complaint_number: string
+          created_at: string
+          created_by: string
+          details: string | null
+          id: string
+          project: string
+          source: string
+          status: string
+          unit: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action?: string | null
+          client_name: string
+          complaint_number: string
+          created_at?: string
+          created_by: string
+          details?: string | null
+          id?: string
+          project: string
+          source: string
+          status: string
+          unit: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action?: string | null
+          client_name?: string
+          complaint_number?: string
+          created_at?: string
+          created_by?: string
+          details?: string | null
+          id?: string
+          project?: string
+          source?: string
+          status?: string
+          unit?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      customer_satisfaction: {
+        Row: {
+          closing_time_bad: number
+          closing_time_good: number
+          closing_time_neutral: number
+          closing_time_very_bad: number
+          closing_time_very_good: number
+          comments: string | null
+          created_at: string
+          created_by: string
+          date: string
+          first_time_resolution_bad: number
+          first_time_resolution_good: number
+          first_time_resolution_neutral: number
+          first_time_resolution_very_bad: number
+          first_time_resolution_very_good: number
+          id: string
+          period: string
+          service_quality_bad: number
+          service_quality_good: number
+          service_quality_neutral: number
+          service_quality_very_bad: number
+          service_quality_very_good: number
+        }
+        Insert: {
+          closing_time_bad: number
+          closing_time_good: number
+          closing_time_neutral: number
+          closing_time_very_bad: number
+          closing_time_very_good: number
+          comments?: string | null
+          created_at?: string
+          created_by: string
+          date: string
+          first_time_resolution_bad: number
+          first_time_resolution_good: number
+          first_time_resolution_neutral: number
+          first_time_resolution_very_bad: number
+          first_time_resolution_very_good: number
+          id?: string
+          period: string
+          service_quality_bad: number
+          service_quality_good: number
+          service_quality_neutral: number
+          service_quality_very_bad: number
+          service_quality_very_good: number
+        }
+        Update: {
+          closing_time_bad?: number
+          closing_time_good?: number
+          closing_time_neutral?: number
+          closing_time_very_bad?: number
+          closing_time_very_good?: number
+          comments?: string | null
+          created_at?: string
+          created_by?: string
+          date?: string
+          first_time_resolution_bad?: number
+          first_time_resolution_good?: number
+          first_time_resolution_neutral?: number
+          first_time_resolution_very_bad?: number
+          first_time_resolution_very_good?: number
+          id?: string
+          period?: string
+          service_quality_bad?: number
+          service_quality_good?: number
+          service_quality_neutral?: number
+          service_quality_very_bad?: number
+          service_quality_very_good?: number
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          achieved: boolean
+          category: string
+          change: number
+          created_at: string
+          created_by: string
+          date: string
+          goal: number
+          id: string
+          name: string
+          period: string
+          value: number
+        }
+        Insert: {
+          achieved: boolean
+          category: string
+          change: number
+          created_at?: string
+          created_by: string
+          date: string
+          goal: number
+          id?: string
+          name: string
+          period: string
+          value: number
+        }
+        Update: {
+          achieved?: boolean
+          category?: string
+          change?: number
+          created_at?: string
+          created_by?: string
+          date?: string
+          goal?: number
+          id?: string
+          name?: string
+          period?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          role: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          client_delivery_date: string | null
+          client_name: string
+          construction_end_date: string | null
+          created_at: string
+          created_by: string
+          date: string
+          electricity_meter_date: string | null
+          empty_date: string | null
+          final_delivery_date: string | null
+          has_been_rated: boolean | null
+          id: string
+          payment_method: string | null
+          project: string
+          rating: number | null
+          reservation_number: string
+          sale_type: string | null
+          sales_employee: string | null
+          status: string
+          unit: string
+          unit_value: number | null
+          updated_at: string
+          water_meter_date: string | null
+        }
+        Insert: {
+          client_delivery_date?: string | null
+          client_name: string
+          construction_end_date?: string | null
+          created_at?: string
+          created_by: string
+          date: string
+          electricity_meter_date?: string | null
+          empty_date?: string | null
+          final_delivery_date?: string | null
+          has_been_rated?: boolean | null
+          id?: string
+          payment_method?: string | null
+          project: string
+          rating?: number | null
+          reservation_number: string
+          sale_type?: string | null
+          sales_employee?: string | null
+          status: string
+          unit: string
+          unit_value?: number | null
+          updated_at?: string
+          water_meter_date?: string | null
+        }
+        Update: {
+          client_delivery_date?: string | null
+          client_name?: string
+          construction_end_date?: string | null
+          created_at?: string
+          created_by?: string
+          date?: string
+          electricity_meter_date?: string | null
+          empty_date?: string | null
+          final_delivery_date?: string | null
+          has_been_rated?: boolean | null
+          id?: string
+          payment_method?: string | null
+          project?: string
+          rating?: number | null
+          reservation_number?: string
+          sale_type?: string | null
+          sales_employee?: string | null
+          status?: string
+          unit?: string
+          unit_value?: number | null
+          updated_at?: string
+          water_meter_date?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
