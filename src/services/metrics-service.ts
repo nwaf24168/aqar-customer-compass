@@ -65,24 +65,59 @@ export const saveMetrics = async (metrics: Omit<Metric, 'id' | 'createdAt' | 'cr
       return false;
     }
     
-    // إنشاء مصفوفة من عمليات الإدخال
-    const insertPromises = metrics.map(metric => 
-      supabase.from('metrics').insert({
-        period: metric.period,
-        date: metric.date || new Date().toISOString().split('T')[0],
-        category: metric.category,
-        name: metric.name,
-        value: metric.value,
-        goal: metric.goal,
-        change: metric.change || 0,
-        achieved: metric.achieved,
-        created_by: userId
-      })
-    );
+    // Check if metrics for this period and date already exist
+    const period = metrics[0].period;
+    const date = metrics[0].date || new Date().toISOString().split('T')[0];
     
-    await Promise.all(insertPromises);
+    const { data: existingMetrics, error: fetchError } = await supabase
+      .from('metrics')
+      .select('id')
+      .eq('period', period)
+      .eq('date', date)
+      .eq('category', 'performance');
+      
+    if (fetchError) {
+      console.error('Error checking for existing metrics:', fetchError);
+      throw fetchError;
+    }
     
-    // حفظ البيانات في التخزين المحلي كاحتياط
+    // If metrics already exist for this period and date, delete them first
+    if (existingMetrics && existingMetrics.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('metrics')
+        .delete()
+        .in('id', existingMetrics.map(m => m.id));
+        
+      if (deleteError) {
+        console.error('Error deleting existing metrics:', deleteError);
+        throw deleteError;
+      }
+    }
+    
+    // Prepare data for insertion
+    const metricsToInsert = metrics.map(metric => ({
+      period: metric.period,
+      date: metric.date || date,
+      category: metric.category,
+      name: metric.name,
+      value: metric.value,
+      goal: metric.goal,
+      change: metric.change || 0,
+      achieved: metric.achieved,
+      created_by: userId
+    }));
+    
+    // Insert new metrics
+    const { error: insertError } = await supabase
+      .from('metrics')
+      .insert(metricsToInsert);
+      
+    if (insertError) {
+      console.error('Error inserting metrics:', insertError);
+      throw insertError;
+    }
+    
+    // Save in localStorage as backup
     const storageKey = `performanceMetrics_${metrics[0].period}`;
     localStorage.setItem(storageKey, JSON.stringify(metrics));
     

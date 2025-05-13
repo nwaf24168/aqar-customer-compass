@@ -36,7 +36,15 @@ export const fetchServiceData = async (period: 'weekly' | 'yearly'): Promise<Ser
     
     if (!data || data.length === 0) {
       // إذا لم نجد بيانات، نحاول استردادها من التخزين المحلي
-      return fetchFromLocalStorage(period);
+      const localData = fetchFromLocalStorage(period);
+      
+      // محاولة حفظ البيانات المحلية في قاعدة البيانات للمرة القادمة
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (userId) {
+        await saveServiceData(localData, period);
+      }
+      
+      return localData;
     }
     
     // تحويل البيانات إلى التنسيق المطلوب
@@ -193,28 +201,60 @@ export const saveServiceData = async (categories: ServiceCategory[], period: 'we
       created_by: userId
     };
     
-    const { error } = await supabase.from('analytics_data').insert({
-      period: callData.period,
-      date: callData.date,
-      call_complaints: callData.complaints,
-      call_contact_requests: callData.contactRequests,
-      call_maintenance_requests: callData.maintenanceRequests,
-      call_inquiries: callData.inquiries,
-      call_office_appointments: callData.officeAppointments,
-      call_project_appointments: callData.projectAppointments,
-      call_guest_appointments: callData.guestAppointments,
-      customer_satisfaction_service_quality: 0, // سيتم تحديثها في خدمة رضا العملاء
-      customer_satisfaction_closing_time: 0,
-      customer_satisfaction_first_time_resolution: 0,
-      nps_new_clients: 0,
-      nps_after_year: 0,
-      nps_old_clients: 0,
-      created_by: userId
-    });
+    // Check if there's an existing record for today
+    const { data: existingData, error: fetchError } = await supabase
+      .from('analytics_data')
+      .select('id')
+      .eq('period', period)
+      .eq('date', callData.date)
+      .limit(1);
+      
+    if (fetchError) {
+      console.error('Error checking for existing data:', fetchError);
+      throw fetchError;
+    }
     
-    if (error) {
-      console.error('Error saving service data:', error);
-      throw error;
+    let result;
+    
+    if (existingData && existingData.length > 0) {
+      // Update existing record
+      result = await supabase
+        .from('analytics_data')
+        .update({
+          call_complaints: callData.complaints,
+          call_contact_requests: callData.contactRequests,
+          call_maintenance_requests: callData.maintenanceRequests,
+          call_inquiries: callData.inquiries,
+          call_office_appointments: callData.officeAppointments,
+          call_project_appointments: callData.projectAppointments,
+          call_guest_appointments: callData.guestAppointments
+        })
+        .eq('id', existingData[0].id);
+    } else {
+      // Insert new record
+      result = await supabase.from('analytics_data').insert({
+        period: callData.period,
+        date: callData.date,
+        call_complaints: callData.complaints,
+        call_contact_requests: callData.contactRequests,
+        call_maintenance_requests: callData.maintenanceRequests,
+        call_inquiries: callData.inquiries,
+        call_office_appointments: callData.officeAppointments,
+        call_project_appointments: callData.projectAppointments,
+        call_guest_appointments: callData.guestAppointments,
+        customer_satisfaction_service_quality: 0,
+        customer_satisfaction_closing_time: 0,
+        customer_satisfaction_first_time_resolution: 0,
+        nps_new_clients: 0,
+        nps_after_year: 0,
+        nps_old_clients: 0,
+        created_by: userId
+      });
+    }
+    
+    if (result.error) {
+      console.error('Error saving service data:', result.error);
+      throw result.error;
     }
     
     // حفظ البيانات أيضًا في التخزين المحلي كاحتياط

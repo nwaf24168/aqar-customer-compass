@@ -92,16 +92,15 @@ export const updateUser = async (userData: User): Promise<User | null> => {
 
 export const deleteUser = async (userId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
+    // First delete from auth
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
     
-    if (error) {
-      console.error('Error deleting user:', error);
-      throw error;
+    if (authError) {
+      console.error('Error deleting user from auth:', authError);
+      throw authError;
     }
     
+    // The profiles entry should be deleted automatically via cascade
     return true;
   } catch (error) {
     console.error('Error in deleteUser:', error);

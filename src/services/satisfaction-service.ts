@@ -28,7 +28,15 @@ export const fetchSatisfactionData = async (period: 'weekly' | 'yearly'): Promis
     
     if (!data || data.length === 0) {
       // إذا لم نجد بيانات، نحاول استردادها من التخزين المحلي
-      return fetchFromLocalStorage(period);
+      const localData = fetchFromLocalStorage(period);
+      
+      // محاولة حفظ البيانات المحلية في قاعدة البيانات للمرة القادمة
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (userId) {
+        await saveSatisfactionData(localData, period);
+      }
+      
+      return localData;
     }
     
     // تحويل البيانات إلى التنسيق المطلوب
@@ -187,38 +195,86 @@ export const saveSatisfactionData = async (data: SatisfactionData, period: 'week
     const closingTimeCategory = getCategory('وقت الإغلاق');
     const firstTimeCategory = getCategory('الحل من أول مرة');
     
-    const { error } = await supabase.from('customer_satisfaction').insert({
-      period,
-      date: new Date().toISOString().split('T')[0],
+    // Check if there's a record for today
+    const currentDate = new Date().toISOString().split('T')[0];
+    const { data: existingData, error: fetchError } = await supabase
+      .from('customer_satisfaction')
+      .select('id')
+      .eq('period', period)
+      .eq('date', currentDate)
+      .limit(1);
       
-      // جودة الخدمة
-      service_quality_very_good: getMetricValue(serviceQualityCategory, 'serviceQualityVeryGood'),
-      service_quality_good: getMetricValue(serviceQualityCategory, 'serviceQualityGood'),
-      service_quality_neutral: getMetricValue(serviceQualityCategory, 'serviceQualityNeutral'),
-      service_quality_bad: getMetricValue(serviceQualityCategory, 'serviceQualityBad'),
-      service_quality_very_bad: getMetricValue(serviceQualityCategory, 'serviceQualityVeryBad'),
-      
-      // وقت الإغلاق
-      closing_time_very_good: getMetricValue(closingTimeCategory, 'closingTimeVeryGood'),
-      closing_time_good: getMetricValue(closingTimeCategory, 'closingTimeGood'),
-      closing_time_neutral: getMetricValue(closingTimeCategory, 'closingTimeNeutral'),
-      closing_time_bad: getMetricValue(closingTimeCategory, 'closingTimeBad'),
-      closing_time_very_bad: getMetricValue(closingTimeCategory, 'closingTimeVeryBad'),
-      
-      // الحل من أول مرة
-      first_time_resolution_very_good: getMetricValue(firstTimeCategory, 'firstTimeVeryGood'),
-      first_time_resolution_good: getMetricValue(firstTimeCategory, 'firstTimeGood'),
-      first_time_resolution_neutral: getMetricValue(firstTimeCategory, 'firstTimeNeutral'),
-      first_time_resolution_bad: getMetricValue(firstTimeCategory, 'firstTimeBad'),
-      first_time_resolution_very_bad: getMetricValue(firstTimeCategory, 'firstTimeVeryBad'),
-      
-      comments: data.comments || '',
-      created_by: userId
-    });
+    if (fetchError) {
+      console.error('Error checking for existing satisfaction data:', fetchError);
+      throw fetchError;
+    }
     
-    if (error) {
-      console.error('Error saving satisfaction data:', error);
-      throw error;
+    let result;
+    
+    if (existingData && existingData.length > 0) {
+      // Update existing record
+      result = await supabase
+        .from('customer_satisfaction')
+        .update({
+          // جودة الخدمة
+          service_quality_very_good: getMetricValue(serviceQualityCategory, 'serviceQualityVeryGood'),
+          service_quality_good: getMetricValue(serviceQualityCategory, 'serviceQualityGood'),
+          service_quality_neutral: getMetricValue(serviceQualityCategory, 'serviceQualityNeutral'),
+          service_quality_bad: getMetricValue(serviceQualityCategory, 'serviceQualityBad'),
+          service_quality_very_bad: getMetricValue(serviceQualityCategory, 'serviceQualityVeryBad'),
+          
+          // وقت الإغلاق
+          closing_time_very_good: getMetricValue(closingTimeCategory, 'closingTimeVeryGood'),
+          closing_time_good: getMetricValue(closingTimeCategory, 'closingTimeGood'),
+          closing_time_neutral: getMetricValue(closingTimeCategory, 'closingTimeNeutral'),
+          closing_time_bad: getMetricValue(closingTimeCategory, 'closingTimeBad'),
+          closing_time_very_bad: getMetricValue(closingTimeCategory, 'closingTimeVeryBad'),
+          
+          // الحل من أول مرة
+          first_time_resolution_very_good: getMetricValue(firstTimeCategory, 'firstTimeVeryGood'),
+          first_time_resolution_good: getMetricValue(firstTimeCategory, 'firstTimeGood'),
+          first_time_resolution_neutral: getMetricValue(firstTimeCategory, 'firstTimeNeutral'),
+          first_time_resolution_bad: getMetricValue(firstTimeCategory, 'firstTimeBad'),
+          first_time_resolution_very_bad: getMetricValue(firstTimeCategory, 'firstTimeVeryBad'),
+          
+          comments: data.comments || ''
+        })
+        .eq('id', existingData[0].id);
+    } else {
+      // Insert new record
+      result = await supabase.from('customer_satisfaction').insert({
+        period,
+        date: currentDate,
+        
+        // جودة الخدمة
+        service_quality_very_good: getMetricValue(serviceQualityCategory, 'serviceQualityVeryGood'),
+        service_quality_good: getMetricValue(serviceQualityCategory, 'serviceQualityGood'),
+        service_quality_neutral: getMetricValue(serviceQualityCategory, 'serviceQualityNeutral'),
+        service_quality_bad: getMetricValue(serviceQualityCategory, 'serviceQualityBad'),
+        service_quality_very_bad: getMetricValue(serviceQualityCategory, 'serviceQualityVeryBad'),
+        
+        // وقت الإغلاق
+        closing_time_very_good: getMetricValue(closingTimeCategory, 'closingTimeVeryGood'),
+        closing_time_good: getMetricValue(closingTimeCategory, 'closingTimeGood'),
+        closing_time_neutral: getMetricValue(closingTimeCategory, 'closingTimeNeutral'),
+        closing_time_bad: getMetricValue(closingTimeCategory, 'closingTimeBad'),
+        closing_time_very_bad: getMetricValue(closingTimeCategory, 'closingTimeVeryBad'),
+        
+        // الحل من أول مرة
+        first_time_resolution_very_good: getMetricValue(firstTimeCategory, 'firstTimeVeryGood'),
+        first_time_resolution_good: getMetricValue(firstTimeCategory, 'firstTimeGood'),
+        first_time_resolution_neutral: getMetricValue(firstTimeCategory, 'firstTimeNeutral'),
+        first_time_resolution_bad: getMetricValue(firstTimeCategory, 'firstTimeBad'),
+        first_time_resolution_very_bad: getMetricValue(firstTimeCategory, 'firstTimeVeryBad'),
+        
+        comments: data.comments || '',
+        created_by: userId
+      });
+    }
+    
+    if (result.error) {
+      console.error('Error saving satisfaction data:', result.error);
+      throw result.error;
     }
     
     // تحديث بيانات التحليلات أيضًا بمتوسط رضا العملاء
