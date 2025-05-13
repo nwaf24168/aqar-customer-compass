@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,17 +9,7 @@ import { Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User } from '@/types';
-
-// Mock user data
-const mockUsers: User[] = [
-  { id: '1', username: 'admin', role: 'admin', createdAt: '2024-05-01' },
-  { id: '2', username: 'abdulsalam', role: 'manager', createdAt: '2024-05-02' },
-  { id: '3', username: 'aljawharah', role: 'customer_service', createdAt: '2024-05-03' },
-  { id: '4', username: 'khalood', role: 'customer_service', createdAt: '2024-05-04' },
-  { id: '5', username: 'adnan', role: 'customer_service', createdAt: '2024-05-05' },
-  { id: '6', username: 'lateefa', role: 'customer_service', createdAt: '2024-05-06' },
-  { id: '7', username: 'nawaf', role: 'admin', createdAt: '2024-05-07' }
-];
+import { fetchUsers, addUser, updateUser, deleteUser } from '@/services/user-service';
 
 const roleTranslations: Record<string, string> = {
   'admin': 'مدير النظام',
@@ -29,46 +19,123 @@ const roleTranslations: Record<string, string> = {
 };
 
 const Settings = () => {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleAddUser = (user: Partial<User>) => {
-    const newUser: User = {
-      id: String(users.length + 1),
-      username: user.username || '',
-      role: user.role || 'customer_service',
-      createdAt: new Date().toISOString().split('T')[0]
+  // جلب المستخدمين من قاعدة البيانات
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedUsers = await fetchUsers();
+        setUsers(fetchedUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+        toast({
+          title: 'خطأ في تحميل البيانات',
+          description: 'حدث خطأ أثناء تحميل بيانات المستخدمين.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setUsers([...users, newUser]);
-    setIsAddUserDialogOpen(false);
-    toast({
-      title: 'تم إضافة المستخدم',
-      description: `تم إضافة ${newUser.username} بنجاح`,
-    });
+    loadUsers();
+  }, [toast]);
+
+  const handleAddUser = async (userData: Partial<User> & { password: string }) => {
+    try {
+      const newUser = await addUser({
+        username: userData.username || '',
+        role: userData.role || 'customer_service',
+        password: userData.password
+      });
+
+      if (newUser) {
+        setUsers([...users, newUser]);
+        setIsAddUserDialogOpen(false);
+        toast({
+          title: 'تم إضافة المستخدم',
+          description: `تم إضافة ${newUser.username} بنجاح`,
+        });
+      } else {
+        toast({
+          title: 'خطأ في إضافة المستخدم',
+          description: 'حدث خطأ أثناء محاولة إضافة المستخدم.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error("Error adding user:", error);
+      toast({
+        title: 'خطأ في إضافة المستخدم',
+        description: 'حدث خطأ أثناء محاولة إضافة المستخدم.',
+        variant: 'destructive'
+      });
+    }
   };
 
-  const handleEditUser = (user: User) => {
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? user : u
-    );
-    setUsers(updatedUsers);
-    setIsEditUserDialogOpen(false);
-    toast({
-      title: 'تم تعديل المستخدم',
-      description: `تم تعديل ${user.username} بنجاح`,
-    });
+  const handleEditUser = async (userData: User) => {
+    try {
+      const updatedUser = await updateUser(userData);
+      
+      if (updatedUser) {
+        const updatedUsers = users.map(u => 
+          u.id === updatedUser.id ? updatedUser : u
+        );
+        setUsers(updatedUsers);
+        setIsEditUserDialogOpen(false);
+        toast({
+          title: 'تم تعديل المستخدم',
+          description: `تم تعديل ${updatedUser.username} بنجاح`,
+        });
+      } else {
+        toast({
+          title: 'خطأ في تعديل المستخدم',
+          description: 'حدث خطأ أثناء محاولة تعديل المستخدم.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast({
+        title: 'خطأ في تعديل المستخدم',
+        description: 'حدث خطأ أثناء محاولة تعديل المستخدم.',
+        variant: 'destructive'
+      });
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
-    setUsers(users.filter(user => user.id !== id));
-    toast({
-      title: 'تم حذف المستخدم',
-      description: 'تم حذف المستخدم بنجاح',
-    });
+  const handleDeleteUser = async (id: string) => {
+    try {
+      const success = await deleteUser(id);
+      
+      if (success) {
+        setUsers(users.filter(user => user.id !== id));
+        toast({
+          title: 'تم حذف المستخدم',
+          description: 'تم حذف المستخدم بنجاح',
+        });
+      } else {
+        toast({
+          title: 'خطأ في حذف المستخدم',
+          description: 'حدث خطأ أثناء محاولة حذف المستخدم.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: 'خطأ في حذف المستخدم',
+        description: 'حدث خطأ أثناء محاولة حذف المستخدم.',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
@@ -91,68 +158,72 @@ const Settings = () => {
               إضافة وتعديل وحذف مستخدمي النظام
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-right py-3 px-4 font-medium">اسم المستخدم</th>
-                    <th className="text-right py-3 px-4 font-medium">الصلاحية</th>
-                    <th className="text-right py-3 px-4 font-medium">رمز الدخول</th>
-                    <th className="text-right py-3 px-4 font-medium">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b border-border">
-                      <td className="py-3 px-4">{user.username}</td>
-                      <td className="py-3 px-4">{roleTranslations[user.role] || user.role}</td>
-                      <td className="py-3 px-4">••••••••</td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setIsEditUserDialogOpen(true);
-                            }}
-                          >
-                            <Edit size={18} />
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive">
-                                <Trash2 size={18} />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  هل أنت متأكد من حذف المستخدم؟
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  سيتم حذف المستخدم {user.username} بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
-                                >
-                                  حذف
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </td>
+            {isLoading ? (
+              <div className="text-center py-8">جاري تحميل البيانات...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-right py-3 px-4 font-medium">اسم المستخدم</th>
+                      <th className="text-right py-3 px-4 font-medium">الصلاحية</th>
+                      <th className="text-right py-3 px-4 font-medium">رمز الدخول</th>
+                      <th className="text-right py-3 px-4 font-medium">الإجراءات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-border">
+                        <td className="py-3 px-4">{user.username}</td>
+                        <td className="py-3 px-4">{roleTranslations[user.role] || user.role}</td>
+                        <td className="py-3 px-4">••••••••</td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setIsEditUserDialogOpen(true);
+                              }}
+                            >
+                              <Edit size={18} />
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive">
+                                  <Trash2 size={18} />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    هل أنت متأكد من حذف المستخدم؟
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    سيتم حذف المستخدم {user.username} بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    حذف
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
           
           <div className="bg-secondary/30 p-6 border-t border-border">

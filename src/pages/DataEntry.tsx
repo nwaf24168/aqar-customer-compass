@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { saveMetrics } from '@/services/metrics-service';
+import { saveServiceData, fetchServiceData, ServiceCategory } from '@/services/service-data-service';
+import { saveSatisfactionData, fetchSatisfactionData, SatisfactionData } from '@/services/satisfaction-service';
 
 const DataEntry = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
@@ -46,18 +50,38 @@ const DataEntry = () => {
         <TabsContent value="performance" className="mt-6">
           <PerformanceMetricsForm 
             period={period}
-            onSubmit={(data) => {
-              // Save to localStorage with period key
-              const storageKey = `performanceMetrics_${period}`;
-              localStorage.setItem(storageKey, JSON.stringify(data));
-              console.log(`Saving ${period} performance metrics:`, data);
-              toast({
-                title: "تم الحفظ",
-                description: `تم حفظ بيانات مؤشرات الأداء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-              });
-              
-              // Navigate to dashboard to see the changes
-              navigate('/dashboard');
+            onSubmit={async (data) => {
+              try {
+                // تجهيز البيانات للحفظ في قاعدة البيانات
+                const metricsForDb = data.map(metric => ({
+                  period,
+                  date: new Date().toISOString().split('T')[0],
+                  category: 'performance',
+                  name: metric.id,
+                  value: metric.value,
+                  goal: metric.goal,
+                  change: 0, // يمكن حسابها لاحقًا
+                  achieved: metric.achieved
+                }));
+                
+                // حفظ البيانات في قاعدة البيانات
+                await saveMetrics(metricsForDb);
+                
+                toast({
+                  title: "تم الحفظ",
+                  description: `تم حفظ بيانات مؤشرات الأداء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                });
+                
+                // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
+                navigate('/dashboard');
+              } catch (error) {
+                console.error('Error saving performance metrics:', error);
+                toast({
+                  title: "خطأ في الحفظ",
+                  description: "حدث خطأ أثناء حفظ البيانات. يرجى المحاولة مرة أخرى.",
+                  variant: "destructive"
+                });
+              }
             }} 
           />
         </TabsContent>
@@ -65,18 +89,26 @@ const DataEntry = () => {
         <TabsContent value="service" className="mt-6">
           <ServiceMetricsForm 
             period={period}
-            onSubmit={(data) => {
-              // Save to localStorage with period key
-              const storageKey = `serviceData_${period}`;
-              localStorage.setItem(storageKey, JSON.stringify(data));
-              console.log(`Saving ${period} service metrics:`, data);
-              toast({
-                title: "تم الحفظ",
-                description: `تم حفظ بيانات خدمة العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-              });
-              
-              // Navigate to dashboard to see the changes
-              navigate('/dashboard');
+            onSubmit={async (data) => {
+              try {
+                // حفظ البيانات في قاعدة البيانات
+                await saveServiceData(data, period);
+                
+                toast({
+                  title: "تم الحفظ",
+                  description: `تم حفظ بيانات خدمة العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                });
+                
+                // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
+                navigate('/dashboard');
+              } catch (error) {
+                console.error('Error saving service metrics:', error);
+                toast({
+                  title: "خطأ في الحفظ",
+                  description: "حدث خطأ أثناء حفظ بيانات خدمة العملاء. يرجى المحاولة مرة أخرى.",
+                  variant: "destructive"
+                });
+              }
             }}
           />
         </TabsContent>
@@ -84,23 +116,26 @@ const DataEntry = () => {
         <TabsContent value="satisfaction" className="mt-6">
           <SatisfactionForm 
             period={period}
-            onSubmit={(data) => {
-              // Save to localStorage with period key
-              const storageKey = `satisfactionData_${period}`;
-              localStorage.setItem(storageKey, JSON.stringify(data));
-              
-              // Save comments separately with period key
-              const commentsKey = `satisfactionComments_${period}`;
-              localStorage.setItem(commentsKey, data.comments);
-              
-              console.log(`Saving ${period} satisfaction data:`, data);
-              toast({
-                title: "تم الحفظ",
-                description: `تم حفظ بيانات رضا العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-              });
-              
-              // Navigate to dashboard to see the changes
-              navigate('/dashboard');
+            onSubmit={async (data) => {
+              try {
+                // حفظ البيانات في قاعدة البيانات
+                await saveSatisfactionData(data, period);
+                
+                toast({
+                  title: "تم الحفظ",
+                  description: `تم حفظ بيانات رضا العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                });
+                
+                // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
+                navigate('/dashboard');
+              } catch (error) {
+                console.error('Error saving satisfaction data:', error);
+                toast({
+                  title: "خطأ في الحفظ",
+                  description: "حدث خطأ أثناء حفظ بيانات رضا العملاء. يرجى المحاولة مرة أخرى.",
+                  variant: "destructive"
+                });
+              }
             }}
           />
         </TabsContent>
@@ -252,88 +287,23 @@ const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
 };
 
 const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
-  const initialWeeklyCategories = [
-    {
-      title: 'المكالمات',
-      metrics: [
-        { id: 'complaints', label: 'شكاوى', value: 28 },
-        { id: 'contactRequests', label: 'طلبات تواصل', value: 42 },
-        { id: 'maintenanceRequests', label: 'طلبات صيانة', value: 65 },
-        { id: 'inquiries', label: 'استفسارات', value: 58 },
-        { id: 'officeAppointments', label: 'مهتمين مكاتب', value: 34 },
-        { id: 'projectAppointments', label: 'مهتمين مشاريع', value: 38 },
-        { id: 'interestedClients', label: 'عملاء مهتمين', value: 42 },
-      ]
-    },
-    {
-      title: 'الاستفسارات',
-      metrics: [
-        { id: 'generalInquiries', label: 'استفسارات عامة', value: 20 },
-        { id: 'documentRequests', label: 'طلب أوراق', value: 10 },
-        { id: 'suspectInquiries', label: 'استفسارات مشكوك', value: 8 },
-        { id: 'apartmentRentals', label: 'إيجارات شقق', value: 12 },
-        { id: 'availableProjects', label: 'مشاريع متاحة', value: 8 },
-      ]
-    },
-    {
-      title: 'طلبات الصيانة',
-      metrics: [
-        { id: 'cancelled', label: 'ملغية', value: 5 },
-        { id: 'resolved', label: 'منجزة', value: 45 },
-        { id: 'inProgress', label: 'قيد التنفيذ', value: 15 },
-      ]
-    },
-  ];
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const initialYearlyCategories = [
-    {
-      title: 'المكالمات',
-      metrics: [
-        { id: 'complaints', label: 'شكاوى', value: 350 },
-        { id: 'contactRequests', label: 'طلبات تواصل', value: 520 },
-        { id: 'maintenanceRequests', label: 'طلبات صيانة', value: 780 },
-        { id: 'inquiries', label: 'استفسارات', value: 650 },
-        { id: 'officeAppointments', label: 'مهتمين مكاتب', value: 420 },
-        { id: 'projectAppointments', label: 'مهتمين مشاريع', value: 480 },
-        { id: 'interestedClients', label: 'عملاء مهتمين', value: 520 },
-      ]
-    },
-    {
-      title: 'الاستفسارات',
-      metrics: [
-        { id: 'generalInquiries', label: 'استفسارات عامة', value: 240 },
-        { id: 'documentRequests', label: 'طلب أوراق', value: 120 },
-        { id: 'suspectInquiries', label: 'استفسارات مشكوك', value: 90 },
-        { id: 'apartmentRentals', label: 'إيجارات شقق', value: 150 },
-        { id: 'availableProjects', label: 'مشاريع متاحة', value: 95 },
-      ]
-    },
-    {
-      title: 'طلبات الصيانة',
-      metrics: [
-        { id: 'cancelled', label: 'ملغية', value: 60 },
-        { id: 'resolved', label: 'منجزة', value: 550 },
-        { id: 'inProgress', label: 'قيد التنفيذ', value: 170 },
-      ]
-    },
-  ];
-
-  // Load saved data from localStorage based on period
-  const [categories, setCategories] = useState(() => {
-    const storageKey = `serviceData_${period}`;
-    const savedData = localStorage.getItem(storageKey);
-    return savedData ? JSON.parse(savedData) : (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
-  });
-
-  // Update categories when period changes
   useEffect(() => {
-    const storageKey = `serviceData_${period}`;
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
-      setCategories(JSON.parse(savedData));
-    } else {
-      setCategories(period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
-    }
+    const loadServiceData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchServiceData(period);
+        setCategories(data);
+      } catch (error) {
+        console.error('Error loading service data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadServiceData();
   }, [period]);
 
   const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
@@ -355,6 +325,10 @@ const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
     e.preventDefault();
     onSubmit(categories);
   };
+
+  if (isLoading) {
+    return <div className="text-center py-8">جاري تحميل البيانات...</div>;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -401,109 +375,31 @@ const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
 };
 
 const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
-  const initialWeeklyCategories = [
-    {
-      title: 'الحل من أول مرة',
-      metrics: [
-        { id: 'firstTimeVeryGood', label: 'راضي جداً', value: 35 },
-        { id: 'firstTimeGood', label: 'راضي', value: 38 },
-        { id: 'firstTimeNeutral', label: 'محايد', value: 18 },
-        { id: 'firstTimeBad', label: 'غير راضي', value: 6 },
-        { id: 'firstTimeVeryBad', label: 'غير راضي جداً', value: 3 },
-      ]
-    },
-    {
-      title: 'وقت الإغلاق',
-      metrics: [
-        { id: 'closingTimeVeryGood', label: 'راضي جداً', value: 25 },
-        { id: 'closingTimeGood', label: 'راضي', value: 45 },
-        { id: 'closingTimeNeutral', label: 'محايد', value: 20 },
-        { id: 'closingTimeBad', label: 'غير راضي', value: 7 },
-        { id: 'closingTimeVeryBad', label: 'غير راضي جداً', value: 3 },
-      ]
-    },
-    {
-      title: 'جودة الخدمة',
-      metrics: [
-        { id: 'serviceQualityVeryGood', label: 'راضي جداً', value: 30 },
-        { id: 'serviceQualityGood', label: 'راضي', value: 40 },
-        { id: 'serviceQualityNeutral', label: 'محايد', value: 20 },
-        { id: 'serviceQualityBad', label: 'غير راضي', value: 8 },
-        { id: 'serviceQualityVeryBad', label: 'غير راضي جداً', value: 2 },
-      ]
-    },
-  ];
-
-  const initialYearlyCategories = [
-    {
-      title: 'الحل من أول مرة',
-      metrics: [
-        { id: 'firstTimeVeryGood', label: 'راضي جداً', value: 420 },
-        { id: 'firstTimeGood', label: 'راضي', value: 500 },
-        { id: 'firstTimeNeutral', label: 'محايد', value: 220 },
-        { id: 'firstTimeBad', label: 'غير راضي', value: 80 },
-        { id: 'firstTimeVeryBad', label: 'غير راضي جداً', value: 30 },
-      ]
-    },
-    {
-      title: 'وقت الإغلاق',
-      metrics: [
-        { id: 'closingTimeVeryGood', label: 'راضي جداً', value: 320 },
-        { id: 'closingTimeGood', label: 'راضي', value: 550 },
-        { id: 'closingTimeNeutral', label: 'محايد', value: 240 },
-        { id: 'closingTimeBad', label: 'غير راضي', value: 90 },
-        { id: 'closingTimeVeryBad', label: 'غير راضي جداً', value: 40 },
-      ]
-    },
-    {
-      title: 'جودة الخدمة',
-      metrics: [
-        { id: 'serviceQualityVeryGood', label: 'راضي جداً', value: 380 },
-        { id: 'serviceQualityGood', label: 'راضي', value: 520 },
-        { id: 'serviceQualityNeutral', label: 'محايد', value: 250 },
-        { id: 'serviceQualityBad', label: 'غير راضي', value: 100 },
-        { id: 'serviceQualityVeryBad', label: 'غير راضي جداً', value: 35 },
-      ]
-    },
-  ];
-
-  // Load saved data from localStorage based on period
-  const [categories, setCategories] = useState(() => {
-    const storageKey = `satisfactionData_${period}`;
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      return parsedData.categories || (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
-    }
-    return period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories;
+  const [satisfactionData, setSatisfactionData] = useState<SatisfactionData>({
+    categories: [],
+    comments: ''
   });
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [comments, setComments] = useState(() => {
-    const commentsKey = `satisfactionComments_${period}`;
-    return localStorage.getItem(commentsKey) || '';
-  });
-
-  // Update data when period changes
   useEffect(() => {
-    // Update categories
-    const storageKey = `satisfactionData_${period}`;
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      setCategories(parsedData.categories || (period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories));
-    } else {
-      setCategories(period === 'weekly' ? initialWeeklyCategories : initialYearlyCategories);
-    }
-    
-    // Update comments
-    const commentsKey = `satisfactionComments_${period}`;
-    const savedComments = localStorage.getItem(commentsKey);
-    setComments(savedComments || '');
+    const loadSatisfactionData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchSatisfactionData(period);
+        setSatisfactionData(data);
+      } catch (error) {
+        console.error('Error loading satisfaction data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSatisfactionData();
   }, [period]);
 
   const updateMetricValue = (categoryIndex: number, metricId: string, value: number) => {
-    setCategories(prevCategories => {
-      const newCategories = [...prevCategories];
+    setSatisfactionData(prevData => {
+      const newCategories = [...prevData.categories];
       const category = {...newCategories[categoryIndex]};
       category.metrics = category.metrics.map(metric => {
         if (metric.id === metricId) {
@@ -512,14 +408,21 @@ const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
         return metric;
       });
       newCategories[categoryIndex] = category;
-      return newCategories;
+      return {
+        ...prevData,
+        categories: newCategories
+      };
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({categories, comments});
+    onSubmit(satisfactionData);
   };
+
+  if (isLoading) {
+    return <div className="text-center py-8">جاري تحميل البيانات...</div>;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -528,7 +431,7 @@ const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {categories.map((category, categoryIndex) => (
+        {satisfactionData.categories.map((category, categoryIndex) => (
           <Card key={category.title} className="p-6 bg-card/50">
             <h3 className="font-bold text-lg mb-4">{category.title}</h3>
             
@@ -556,8 +459,8 @@ const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
         <Textarea 
           placeholder="أضف تعليقاتك هنا..." 
           className="min-h-32"
-          value={comments}
-          onChange={(e) => setComments(e.target.value)}
+          value={satisfactionData.comments}
+          onChange={(e) => setSatisfactionData(prev => ({...prev, comments: e.target.value}))}
         />
       </Card>
       

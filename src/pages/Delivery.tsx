@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,60 +38,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Reservation } from '@/types';
-
-// Mock reservation data
-const mockReservations: Reservation[] = [
-  {
-    id: '1',
-    reservationNumber: '1',
-    clientName: 'تركي السعيد',
-    project: 'المعالي',
-    unit: '26',
-    date: '2024-12-17',
-    status: 'مكتملة بيانات راحة العملاء',
-    salesData: {
-      paymentMethod: 'بنك',
-      saleType: 'جاهز',
-      unitValue: 3128750,
-      emptyDate: '2025-01-09',
-      salesEmployee: 'دعاء شدادي'
-    },
-    projectData: {
-      constructionEndDate: '2024-09-28',
-      finalDeliveryDate: '2024-08-28',
-      electricityMeterDate: '',
-      waterMeterDate: '',
-      clientDeliveryDate: '2025-03-25'
-    }
-  },
-  {
-    id: '2',
-    reservationNumber: '4',
-    clientName: 'تركي السعيدي',
-    project: 'المعالي',
-    unit: '42',
-    date: '2024-12-22',
-    status: 'مكتملة بيانات المشروع وراحة العملاء',
-  },
-  {
-    id: '3',
-    reservationNumber: '5',
-    clientName: 'علي بخاري',
-    project: '',
-    unit: 'رقم 45',
-    date: '2024-01-01',
-    status: 'مكتملة بيانات راحة العملاء',
-  },
-  {
-    id: '4',
-    reservationNumber: '6',
-    clientName: 'ياسين الفار',
-    project: '',
-    unit: 'رقم 45',
-    date: '2024-01-18',
-    status: 'مكتملة بيانات راحة العملاء',
-  }
-];
+import { fetchReservations, addReservation, updateReservation, deleteReservation } from '@/services/reservation-service';
 
 const statusColors: Record<string, string> = {
   'مكتملة بيانات راحة العملاء': 'bg-blue-500/20 text-blue-500',
@@ -101,30 +48,124 @@ const statusColors: Record<string, string> = {
 };
 
 const Delivery = () => {
-  const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [isAddReservationDialogOpen, setIsAddReservationDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleAddReservation = (reservation: Partial<Reservation>) => {
-    const newReservation: Reservation = {
-      id: String(reservations.length + 1),
-      reservationNumber: String(reservations.length + 1),
-      clientName: reservation.clientName || '',
-      project: reservation.project || '',
-      unit: reservation.unit || '',
-      date: new Date().toISOString().split('T')[0],
-      status: 'ناقصة',
+  // جلب الحجوزات عند تحميل الصفحة
+  useEffect(() => {
+    const loadReservations = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchReservations();
+        setReservations(data);
+      } catch (error) {
+        console.error('Error loading reservations:', error);
+        toast({
+          title: 'خطأ في تحميل البيانات',
+          description: 'حدث خطأ أثناء تحميل بيانات الحجوزات.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    setReservations([...reservations, newReservation]);
-    setIsAddReservationDialogOpen(false);
-    toast({
-      title: 'تم إضافة الحجز',
-      description: `تم إضافة حجز جديد برقم ${newReservation.reservationNumber}`,
-    });
+    loadReservations();
+  }, [toast]);
+
+  const handleAddReservation = async (reservation: Partial<Reservation>) => {
+    try {
+      const newReservation = await addReservation({
+        reservationNumber: String(reservations.length + 1),
+        clientName: reservation.clientName || '',
+        project: reservation.project || '',
+        unit: reservation.unit || '',
+        date: reservation.date || new Date().toISOString().split('T')[0],
+        status: 'ناقصة'
+      });
+
+      if (newReservation) {
+        setReservations([...reservations, newReservation]);
+        setIsAddReservationDialogOpen(false);
+        toast({
+          title: 'تم إضافة الحجز',
+          description: `تم إضافة حجز جديد برقم ${newReservation.reservationNumber}`,
+        });
+      } else {
+        toast({
+          title: 'خطأ في إضافة الحجز',
+          description: 'حدث خطأ أثناء محاولة إضافة الحجز.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error adding reservation:', error);
+      toast({
+        title: 'خطأ في إضافة الحجز',
+        description: 'حدث خطأ أثناء محاولة إضافة الحجز.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUpdateReservation = async (reservation: Reservation) => {
+    try {
+      const updatedReservation = await updateReservation(reservation);
+      
+      if (updatedReservation) {
+        setReservations(reservations.map(r => r.id === updatedReservation.id ? updatedReservation : r));
+        setIsEditDialogOpen(false);
+        toast({
+          title: 'تم تحديث الحجز',
+          description: 'تم تحديث بيانات الحجز بنجاح',
+        });
+      } else {
+        toast({
+          title: 'خطأ في تحديث الحجز',
+          description: 'حدث خطأ أثناء محاولة تحديث الحجز.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      toast({
+        title: 'خطأ في تحديث الحجز',
+        description: 'حدث خطأ أثناء محاولة تحديث الحجز.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteReservation = async (id: string) => {
+    try {
+      const success = await deleteReservation(id);
+      
+      if (success) {
+        setReservations(reservations.filter(r => r.id !== id));
+        toast({
+          title: 'تم حذف الحجز',
+          description: 'تم حذف الحجز بنجاح',
+        });
+      } else {
+        toast({
+          title: 'خطأ في حذف الحجز',
+          description: 'حدث خطأ أثناء محاولة حذف الحجز.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
+      toast({
+        title: 'خطأ في حذف الحجز',
+        description: 'حدث خطأ أثناء محاولة حذف الحجز.',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
@@ -197,66 +238,78 @@ const Delivery = () => {
       </div>
 
       <Card className="bg-card/50">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-right py-3 px-4 font-medium">الرقم المتسلسل</th>
-                <th className="text-right py-3 px-4 font-medium">تاريخ الحجز</th>
-                <th className="text-right py-3 px-4 font-medium">اسم العميل</th>
-                <th className="text-right py-3 px-4 font-medium">المشروع</th>
-                <th className="text-right py-3 px-4 font-medium">الوحدة</th>
-                <th className="text-right py-3 px-4 font-medium">حالة الحجز</th>
-                <th className="text-right py-3 px-4 font-medium">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservations.map((reservation) => (
-                <tr key={reservation.id} className="border-b border-border hover:bg-secondary/30">
-                  <td className="py-3 px-4">{reservation.reservationNumber}</td>
-                  <td className="py-3 px-4">{reservation.date}</td>
-                  <td className="py-3 px-4">{reservation.clientName}</td>
-                  <td className="py-3 px-4">{reservation.project}</td>
-                  <td className="py-3 px-4">{reservation.unit}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs ${statusColors[reservation.status] || 'bg-gray-500/20 text-gray-500'}`}>
-                      {reservation.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          setSelectedReservation(reservation);
-                          setIsViewDialogOpen(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          setSelectedReservation(reservation);
-                          setIsEditDialogOpen(true);
-                        }}
-                      >
-                        <FileEdit className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button variant="ghost" size="icon">
-                        <Trash className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </td>
+        {isLoading ? (
+          <div className="text-center py-8">جاري تحميل البيانات...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-right py-3 px-4 font-medium">الرقم المتسلسل</th>
+                  <th className="text-right py-3 px-4 font-medium">تاريخ الحجز</th>
+                  <th className="text-right py-3 px-4 font-medium">اسم العميل</th>
+                  <th className="text-right py-3 px-4 font-medium">المشروع</th>
+                  <th className="text-right py-3 px-4 font-medium">الوحدة</th>
+                  <th className="text-right py-3 px-4 font-medium">حالة الحجز</th>
+                  <th className="text-right py-3 px-4 font-medium">الإجراءات</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {reservations.map((reservation) => (
+                  <tr key={reservation.id} className="border-b border-border hover:bg-secondary/30">
+                    <td className="py-3 px-4">{reservation.reservationNumber}</td>
+                    <td className="py-3 px-4">{reservation.date}</td>
+                    <td className="py-3 px-4">{reservation.clientName}</td>
+                    <td className="py-3 px-4">{reservation.project}</td>
+                    <td className="py-3 px-4">{reservation.unit}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs ${statusColors[reservation.status] || 'bg-gray-500/20 text-gray-500'}`}>
+                        {reservation.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            setSelectedReservation(reservation);
+                            setIsViewDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            setSelectedReservation(reservation);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
+                          <FileEdit className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            if (reservation.id) {
+                              handleDeleteReservation(reservation.id);
+                            }
+                          }}
+                        >
+                          <Trash className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* View Reservation Dialog */}
@@ -409,29 +462,70 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.date || new Date().toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            date: e.target.value
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">اسم العميل</label>
-                      <Input defaultValue={selectedReservation.clientName || ''} />
+                      <Input 
+                        defaultValue={selectedReservation.clientName || ''} 
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            clientName: e.target.value
+                          });
+                        }}
+                      />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">المشروع</label>
-                      <Input defaultValue={selectedReservation.project || ''} />
+                      <Input 
+                        defaultValue={selectedReservation.project || ''} 
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            project: e.target.value
+                          });
+                        }}
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">الوحدة</label>
-                      <Input defaultValue={selectedReservation.unit || ''} />
+                      <Input 
+                        defaultValue={selectedReservation.unit || ''} 
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            unit: e.target.value
+                          });
+                        }}
+                      />
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">طريقة الدفع</label>
-                      <Select defaultValue={selectedReservation.salesData?.paymentMethod || 'bank'}>
+                      <Select 
+                        defaultValue={selectedReservation.salesData?.paymentMethod || 'bank'}
+                        onValueChange={(value) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            salesData: {
+                              ...selectedReservation.salesData || {},
+                              paymentMethod: value
+                            }
+                          });
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="اختر طريقة الدفع" />
                         </SelectTrigger>
@@ -444,7 +538,18 @@ const Delivery = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">نوع البيع</label>
-                      <Select defaultValue={selectedReservation.salesData?.saleType || 'ready'}>
+                      <Select 
+                        defaultValue={selectedReservation.salesData?.saleType || 'ready'}
+                        onValueChange={(value) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            salesData: {
+                              ...selectedReservation.salesData || {},
+                              saleType: value
+                            }
+                          });
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="اختر نوع البيع" />
                         </SelectTrigger>
@@ -464,6 +569,15 @@ const Delivery = () => {
                         defaultValue={selectedReservation.salesData?.unitValue?.toString() || ''}
                         type="number"
                         dir="ltr"
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            salesData: {
+                              ...selectedReservation.salesData || {},
+                              unitValue: parseInt(e.target.value) || 0
+                            }
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -471,6 +585,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.salesData?.emptyDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            salesData: {
+                              ...selectedReservation.salesData || {},
+                              emptyDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                   </div>
@@ -483,6 +606,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.projectData?.constructionEndDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            projectData: {
+                              ...selectedReservation.projectData || {},
+                              constructionEndDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -490,6 +622,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.projectData?.finalDeliveryDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            projectData: {
+                              ...selectedReservation.projectData || {},
+                              finalDeliveryDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                   </div>
@@ -500,6 +641,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.projectData?.electricityMeterDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            projectData: {
+                              ...selectedReservation.projectData || {},
+                              electricityMeterDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -507,6 +657,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.projectData?.waterMeterDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            projectData: {
+                              ...selectedReservation.projectData || {},
+                              waterMeterDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                   </div>
@@ -517,6 +676,15 @@ const Delivery = () => {
                       <Input
                         type="date"
                         defaultValue={selectedReservation.projectData?.clientDeliveryDate || ''}
+                        onChange={(e) => {
+                          setSelectedReservation({
+                            ...selectedReservation,
+                            projectData: {
+                              ...selectedReservation.projectData || {},
+                              clientDeliveryDate: e.target.value
+                            }
+                          });
+                        }}
                       />
                     </div>
                   </div>
@@ -526,7 +694,18 @@ const Delivery = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">هل تم تقييم الاستلام</label>
-                        <Select defaultValue={selectedReservation.satisfactionData?.hasBeenRated ? 'yes' : 'no'}>
+                        <Select 
+                          defaultValue={selectedReservation.satisfactionData?.hasBeenRated ? 'yes' : 'no'}
+                          onValueChange={(value) => {
+                            setSelectedReservation({
+                              ...selectedReservation,
+                              satisfactionData: {
+                                ...selectedReservation.satisfactionData || {},
+                                hasBeenRated: value === 'yes'
+                              }
+                            });
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="اختر" />
                           </SelectTrigger>
@@ -544,6 +723,15 @@ const Delivery = () => {
                           max="10"
                           defaultValue={selectedReservation.satisfactionData?.rating || ''}
                           dir="ltr"
+                          onChange={(e) => {
+                            setSelectedReservation({
+                              ...selectedReservation,
+                              satisfactionData: {
+                                ...selectedReservation.satisfactionData || {},
+                                rating: parseInt(e.target.value) || 0
+                              }
+                            });
+                          }}
                         />
                       </div>
                     </div>
@@ -555,13 +743,7 @@ const Delivery = () => {
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   إلغاء
                 </Button>
-                <Button onClick={() => {
-                  setIsEditDialogOpen(false);
-                  toast({
-                    title: 'تم حفظ التعديلات',
-                    description: 'تم حفظ تعديلات الحجز بنجاح',
-                  });
-                }}>
+                <Button onClick={() => handleUpdateReservation(selectedReservation)}>
                   حفظ التعديلات
                 </Button>
               </div>
