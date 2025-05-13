@@ -17,7 +17,7 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
     // تحويل البيانات إلى نوع Metric
     return data.map(item => ({
       id: item.id,
-      period: item.period,
+      period: item.period as 'weekly' | 'yearly',
       date: item.date,
       category: item.category,
       name: item.name,
@@ -38,7 +38,7 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
       const metrics = JSON.parse(savedData);
       return metrics.map((m: any, index: number) => ({
         id: index.toString(),
-        period,
+        period: period as 'weekly' | 'yearly',
         date: new Date().toISOString().split('T')[0],
         category: 'performance',
         name: m.id,

@@ -146,7 +146,7 @@ export const updateReservation = async (reservation: Partial<Reservation> & { id
         client_delivery_date: reservation.projectData?.clientDeliveryDate,
         has_been_rated: reservation.satisfactionData?.hasBeenRated,
         rating: reservation.satisfactionData?.rating,
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
       })
       .eq('id', reservation.id)
       .select();

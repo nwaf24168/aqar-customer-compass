@@ -45,22 +45,22 @@ export interface Reservation {
   date: string;
   status: string;
   salesData?: {
-    paymentMethod: string;
-    saleType: string;
-    unitValue: number;
-    emptyDate: string;
-    salesEmployee: string;
+    paymentMethod?: string;
+    saleType?: string;
+    unitValue?: number;
+    emptyDate?: string;
+    salesEmployee?: string;
   };
   projectData?: {
-    constructionEndDate: string;
-    finalDeliveryDate: string;
-    electricityMeterDate: string;
-    waterMeterDate: string;
-    clientDeliveryDate: string;
+    constructionEndDate?: string;
+    finalDeliveryDate?: string;
+    electricityMeterDate?: string;
+    waterMeterDate?: string;
+    clientDeliveryDate?: string;
   };
   satisfactionData?: {
-    hasBeenRated: boolean;
-    rating: number;
+    hasBeenRated?: boolean;
+    rating?: number;
   };
 }
 

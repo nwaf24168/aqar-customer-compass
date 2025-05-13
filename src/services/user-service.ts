@@ -15,7 +15,7 @@ export const fetchUsers = async (): Promise<User[]> => {
     return data.map(item => ({
       id: item.id,
       username: item.username,
-      role: item.role,
+      role: item.role as User['role'],
       createdAt: item.created_at
     }));
   } catch (error) {
@@ -81,7 +81,7 @@ export const updateUser = async (userData: User): Promise<User | null> => {
     return data[0] ? {
       id: data[0].id,
       username: data[0].username,
-      role: data[0].role,
+      role: data[0].role as User['role'],
       createdAt: data[0].created_at
     } : null;
   } catch (error) {
