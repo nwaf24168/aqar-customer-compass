@@ -7,14 +7,16 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
     const { data, error } = await supabase
       .from('metrics')
       .select('*')
-      .eq('period', period);
+      .eq('period', period)
+      .order('date', { ascending: false })
+      .limit(12); // Get the most recent metrics
     
     if (error) {
       console.error(`Error fetching ${period} metrics:`, error);
       throw error;
     }
     
-    // تحويل البيانات إلى نوع Metric
+    // Transform database data to application Metric type
     return data.map(item => ({
       id: item.id,
       period: item.period as 'weekly' | 'yearly',
@@ -31,7 +33,7 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
   } catch (error) {
     console.error(`Error in fetchMetrics (${period}):`, error);
     
-    // إذا فشل الجلب، حاول استرداد البيانات من التخزين المحلي كاحتياط
+    // Fallback to localStorage as backup
     const storageKey = `performanceMetrics_${period}`;
     const savedData = localStorage.getItem(storageKey);
     if (savedData) {
@@ -44,7 +46,7 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
         name: m.id,
         value: m.value,
         goal: m.goal,
-        change: 0, // لا نملك بيانات التغيير من localStorage
+        change: 0, // No change data from localStorage
         achieved: m.achieved,
         createdBy: 'system',
         createdAt: new Date().toISOString()
@@ -56,12 +58,17 @@ export const fetchMetrics = async (period: 'weekly' | 'yearly'): Promise<Metric[
 
 export const saveMetrics = async (metrics: Omit<Metric, 'id' | 'createdAt' | 'createdBy'>[]): Promise<boolean> => {
   try {
-    // إذا كانت البيانات فارغة، لا نفعل شيئًا
+    // If data is empty, do nothing
     if (!metrics || metrics.length === 0) return false;
     
     const userId = (await supabase.auth.getUser()).data.user?.id;
     if (!userId) {
       console.error('No authenticated user found');
+      
+      // Save to localStorage as backup
+      const storageKey = `performanceMetrics_${metrics[0].period}`;
+      localStorage.setItem(storageKey, JSON.stringify(metrics));
+      
       return false;
     }
     
@@ -92,6 +99,8 @@ export const saveMetrics = async (metrics: Omit<Metric, 'id' | 'createdAt' | 'cr
         console.error('Error deleting existing metrics:', deleteError);
         throw deleteError;
       }
+      
+      console.log(`Deleted ${existingMetrics.length} existing metrics for ${period} - ${date}`);
     }
     
     // Prepare data for insertion
@@ -107,6 +116,8 @@ export const saveMetrics = async (metrics: Omit<Metric, 'id' | 'createdAt' | 'cr
       created_by: userId
     }));
     
+    console.log(`Inserting ${metricsToInsert.length} metrics for ${period} - ${date}`);
+    
     // Insert new metrics
     const { error: insertError } = await supabase
       .from('metrics')
@@ -121,9 +132,17 @@ export const saveMetrics = async (metrics: Omit<Metric, 'id' | 'createdAt' | 'cr
     const storageKey = `performanceMetrics_${metrics[0].period}`;
     localStorage.setItem(storageKey, JSON.stringify(metrics));
     
+    console.log(`Successfully saved metrics to Supabase`);
     return true;
   } catch (error) {
     console.error('Error saving metrics:', error);
+    
+    // Try to save in localStorage as fallback
+    if (metrics && metrics.length > 0) {
+      const storageKey = `performanceMetrics_${metrics[0].period}`;
+      localStorage.setItem(storageKey, JSON.stringify(metrics));
+    }
+    
     return false;
   }
 };

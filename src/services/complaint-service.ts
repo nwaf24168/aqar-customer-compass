@@ -98,11 +98,38 @@ export const updateComplaint = async (complaint: Partial<Complaint> & { id: stri
       return null;
     }
     
+    // Add additional information to track what was changed and by whom
+    const currentDateTime = new Date().toISOString();
+    let actionHistory = complaint.action || '';
+    
+    // Get current complaint data to create history record
+    const { data: currentComplaint, error: fetchError } = await supabase
+      .from('complaints')
+      .select('*')
+      .eq('id', complaint.id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching current complaint data:', fetchError);
+    } else if (currentComplaint) {
+      // Add history entry for status change
+      if (complaint.status && complaint.status !== currentComplaint.status) {
+        actionHistory = `${actionHistory}\n[${currentDateTime}] Status changed from "${currentComplaint.status}" to "${complaint.status}" by user ID: ${userId}`;
+      }
+      
+      // Add history entries for other changes
+      if (complaint.details && complaint.details !== currentComplaint.details) {
+        actionHistory = `${actionHistory}\n[${currentDateTime}] Details updated by user ID: ${userId}`;
+      }
+    }
+    
     const updateData: any = {
-      updated_by: userId
+      updated_by: userId,
+      updated_at: currentDateTime,
+      action: actionHistory
     };
     
-    // إضافة الحقول المحدثة فقط
+    // Add only the fields that are being updated
     if (complaint.complaintNumber !== undefined) updateData.complaint_number = complaint.complaintNumber;
     if (complaint.clientName !== undefined) updateData.client_name = complaint.clientName;
     if (complaint.project !== undefined) updateData.project = complaint.project;
@@ -110,7 +137,6 @@ export const updateComplaint = async (complaint: Partial<Complaint> & { id: stri
     if (complaint.status !== undefined) updateData.status = complaint.status;
     if (complaint.source !== undefined) updateData.source = complaint.source;
     if (complaint.details !== undefined) updateData.details = complaint.details;
-    if (complaint.action !== undefined) updateData.action = complaint.action;
     
     const { data, error } = await supabase
       .from('complaints')

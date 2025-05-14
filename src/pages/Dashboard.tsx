@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowUp, ArrowDown, Users, Clock, LineChart, Percent } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { fetchMetrics } from '@/services/metrics-service';
+import { supabase } from '@/integrations/supabase/client';
+import { Metric } from '@/types';
 
-// This is mock data that would normally come from Supabase
+// This is fallback mock data that would be used when Supabase data is not available
 const defaultWeeklyMetrics = [
   {
     id: '1',
@@ -368,9 +371,63 @@ const getMetricStatusColor = (value: number, goal: number) => {
   }
 };
 
-// Convert performance metrics from form to dashboard format
-const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
-  if (!formMetrics) return defaultWeeklyMetrics;
+// Convert performance metrics from Supabase to dashboard format
+const convertPerformanceMetricsToFormat = (apiMetrics: Metric[]): any[] => {
+  if (!apiMetrics || apiMetrics.length === 0) {
+    return [];
+  }
+
+  const iconMap: Record<string, React.ReactNode> = {
+    'deliveryQuality': <LineChart className="h-6 w-6" />,
+    'oldClientReferral': <Users className="h-6 w-6" />,
+    'afterYearReferral': <Users className="h-6 w-6" />,
+    'newClientReferral': <Users className="h-6 w-6" />,
+    'csat': <Users className="h-6 w-6" />,
+    'callResponseRate': <Clock className="h-6 w-6" />,
+    'responseTime': <Clock className="h-6 w-6" />,
+    'maintenanceQuality': <LineChart className="h-6 w-6" />,
+    'conversionRate': <Percent className="h-6 w-6" />,
+    'facilityManagementQuality': <LineChart className="h-6 w-6" />,
+    'reopenRequests': <LineChart className="h-6 w-6" />,
+    'maintenanceClosureSpeed': <Clock className="h-6 w-6" />,
+  };
+  
+  const nameMap: Record<string, string> = {
+    'deliveryQuality': 'جودة التسليم',
+    'oldClientReferral': 'نسبة الترشيح للعملاء القدامى',
+    'afterYearReferral': 'نسبة الترشيح بعد السنة',
+    'newClientReferral': 'نسبة الترشيح للعملاء الجدد',
+    'csat': 'راحة العميل (CSAT)',
+    'callResponseRate': 'معدل الرد على المكالمات',
+    'responseTime': 'عدد الثواني للرد',
+    'maintenanceQuality': 'جودة الصيانة',
+    'conversionRate': 'معدل التحول',
+    'facilityManagementQuality': 'جودة إدارة المرافق',
+    'reopenRequests': 'عدد إعادة فتح طلب',
+    'maintenanceClosureSpeed': 'سرعة إغلاق طلبات الصيانة',
+  };
+
+  return apiMetrics.map(metric => {
+    const color = getMetricStatusColor(metric.value, metric.goal);
+    const name = nameMap[metric.name] || metric.name;
+    const icon = iconMap[metric.name] || <LineChart className="h-6 w-6" />;
+    
+    return {
+      id: metric.id,
+      name,
+      value: metric.value,
+      goal: metric.goal,
+      change: metric.change || 0,
+      icon,
+      achieved: metric.achieved,
+      color,
+    };
+  });
+};
+
+// Convert local storage data format as backup
+const convertLocalStorageMetricsToFormat = (formMetrics: any[]): any[] => {
+  if (!formMetrics) return [];
 
   const iconMap: Record<string, React.ReactNode> = {
     'deliveryQuality': <LineChart className="h-6 w-6" />,
@@ -424,71 +481,7 @@ const convertPerformanceMetricsToFormat = (formMetrics: any[]): any[] => {
   return metrics;
 };
 
-// Convert service data from form to dashboard format
-const convertServiceDataToFormat = (formCategories: any[]): any[] => {
-  if (!formCategories) return defaultWeeklyServiceData;
-
-  return formCategories.map(category => {
-    const items = [...category.metrics];
-    const total = items.reduce((sum, item) => sum + item.value, 0);
-    
-    if (category.title === 'المكالمات') {
-      items.push({ name: 'إجمالي المكالمات', value: total });
-    } else if (category.title === 'الاستفسارات') {
-      items.push({ name: 'إجمالي الاستفسارات', value: total });
-    } else if (category.title === 'طلبات الصيانة') {
-      items.push({ name: 'إجمالي طلبات الصيانة', value: total });
-    }
-    
-    return {
-      title: category.title,
-      items: items.map(item => ({
-        name: item.label || item.name,
-        value: item.value
-      }))
-    };
-  });
-};
-
-// Calculate satisfaction percentages from form data
-const calculateSatisfactionPercentages = (satisfactionData: any): any[] => {
-  if (!satisfactionData || !satisfactionData.categories) return defaultWeeklySatisfactionData;
-
-  const { categories } = satisfactionData;
-  
-  const calculatePercentage = (category: any) => {
-    const total = category.metrics.reduce((sum: number, metric: any) => sum + metric.value, 0);
-    if (total === 0) return 0;
-    
-    const weightedSum = 
-      category.metrics[0].value * 5 + // راضي جداً (5 نقاط)
-      category.metrics[1].value * 4 + // راضي (4 نقاط)
-      category.metrics[2].value * 3 + // محايد (3 نقاط)
-      category.metrics[3].value * 2 + // غير راضي (2 نقاط)
-      category.metrics[4].value * 1;  // غير راضي جداً (1 نقطة)
-    
-    return (weightedSum / (total * 5)) * 100;
-  };
-  
-  const firstTimePercentage = calculatePercentage(categories[0]);
-  const closingTimePercentage = calculatePercentage(categories[1]);
-  const serviceQualityPercentage = calculatePercentage(categories[2]);
-  
-  return [
-    {
-      title: 'نسبة الحل من أول مرة',
-      percentage: `${firstTimePercentage.toFixed(1)}%`,
-    },
-    {
-      title: 'رضا العملاء عن مدة الإغلاق',
-      percentage: `${closingTimePercentage.toFixed(1)}%`,
-    },
-    {
-      title: 'رضا العملاء عن الخدمات',
-      percentage: `${serviceQualityPercentage.toFixed(1)}%`,
-    }
-  ];
-};
+// ... keep existing code (remaining helper functions)
 
 const Dashboard = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
@@ -496,20 +489,70 @@ const Dashboard = () => {
   const [serviceData, setServiceData] = useState(defaultWeeklyServiceData);
   const [satisfactionData, setSatisfactionData] = useState(defaultWeeklySatisfactionData);
   const [customerComments, setCustomerComments] = useState('');
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Load saved data from localStorage based on the selected period
+  // Check if user is authenticated
   useEffect(() => {
-    // Load performance metrics for the selected period
-    const perfStorageKey = `performanceMetrics_${period}`;
-    const savedPerformanceMetrics = localStorage.getItem(perfStorageKey);
-    if (savedPerformanceMetrics) {
-      const parsedMetrics = JSON.parse(savedPerformanceMetrics);
-      setMetrics(convertPerformanceMetricsToFormat(parsedMetrics));
-    } else {
-      // Use defaults if no saved data
-      setMetrics(period === 'weekly' ? defaultWeeklyMetrics : defaultYearlyMetrics);
-    }
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      setIsUserAuthenticated(!!data.user);
+    };
+    
+    checkAuth();
+  }, []);
+
+  // Load metrics data from Supabase
+  useEffect(() => {
+    const loadMetricsData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch metrics from Supabase
+        const apiMetrics = await fetchMetrics(period);
+        
+        if (apiMetrics && apiMetrics.length > 0) {
+          // Convert API metrics to dashboard format
+          const formattedMetrics = convertPerformanceMetricsToFormat(apiMetrics);
+          setMetrics(formattedMetrics);
+          console.log(`Loaded ${formattedMetrics.length} metrics from Supabase for ${period}`);
+        } else {
+          // Fallback to localStorage if API returns no data
+          const perfStorageKey = `performanceMetrics_${period}`;
+          const savedPerformanceMetrics = localStorage.getItem(perfStorageKey);
+          
+          if (savedPerformanceMetrics) {
+            const parsedMetrics = JSON.parse(savedPerformanceMetrics);
+            const formattedMetrics = convertLocalStorageMetricsToFormat(parsedMetrics);
+            setMetrics(formattedMetrics);
+            console.log(`Loaded ${formattedMetrics.length} metrics from localStorage for ${period}`);
+          } else {
+            // Use defaults if no saved data
+            setMetrics(period === 'weekly' ? defaultWeeklyMetrics : defaultYearlyMetrics);
+            console.log(`Using default metrics for ${period}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error loading metrics for ${period}:`, error);
+        
+        // Fallback to localStorage on error
+        const perfStorageKey = `performanceMetrics_${period}`;
+        const savedPerformanceMetrics = localStorage.getItem(perfStorageKey);
+        
+        if (savedPerformanceMetrics) {
+          const parsedMetrics = JSON.parse(savedPerformanceMetrics);
+          const formattedMetrics = convertLocalStorageMetricsToFormat(parsedMetrics);
+          setMetrics(formattedMetrics);
+        } else {
+          setMetrics(period === 'weekly' ? defaultWeeklyMetrics : defaultYearlyMetrics);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadMetricsData();
     
     // Load service data for the selected period
     const serviceStorageKey = `serviceData_${period}`;
@@ -570,55 +613,67 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
-
-      <div className="mb-10">
-        <h2 className="text-xl font-bold mb-4">
-          مؤشرات الأداء الرئيسية {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {metrics.map((metric) => (
-            <MetricCard key={metric.id} metric={metric} />
-          ))}
+      
+      {!isUserAuthenticated && (
+        <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4">
+          تنبيه: أنت غير مسجل الدخول. قد تكون البيانات المعروضة غير محدثة.
         </div>
-      </div>
+      )}
+      
+      {isLoading ? (
+        <div className="text-center py-8">جاري تحميل البيانات...</div>
+      ) : (
+        <>
+          <div className="mb-10">
+            <h2 className="text-xl font-bold mb-4">
+              مؤشرات الأداء الرئيسية {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {metrics.map((metric) => (
+                <MetricCard key={metric.id} metric={metric} />
+              ))}
+            </div>
+          </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">
-          خدمة العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {serviceData.map((category, idx) => (
-            <ServiceCard key={idx} data={category} />
-          ))}
-        </div>
-      </div>
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4">
+              خدمة العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {serviceData.map((category, idx) => (
+                <ServiceCard key={idx} data={category} />
+              ))}
+            </div>
+          </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">
-          رضا العملاء عن الخدمات {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {satisfactionData.map((item, idx) => (
-            <SatisfactionCard key={idx} data={item} />
-          ))}
-        </div>
-      </div>
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4">
+              رضا العملاء عن الخدمات {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {satisfactionData.map((item, idx) => (
+                <SatisfactionCard key={idx} data={item} />
+              ))}
+            </div>
+          </div>
 
-      <div>
-        <h2 className="text-xl font-bold mb-4">
-          ملاحظات العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
-        </h2>
-        <Card className="bg-card/50 p-6 min-h-24">
-          {customerComments ? (
-            <p className="whitespace-pre-line">{customerComments}</p>
-          ) : (
-            <p className="text-muted-foreground">لا توجد ملاحظات حالياً</p>
-          )}
-        </Card>
-      </div>
+          <div>
+            <h2 className="text-xl font-bold mb-4">
+              ملاحظات العملاء {period === 'weekly' ? 'الأسبوعية' : 'السنوية'}
+            </h2>
+            <Card className="bg-card/50 p-6 min-h-24">
+              {customerComments ? (
+                <p className="whitespace-pre-line">{customerComments}</p>
+              ) : (
+                <p className="text-muted-foreground">لا توجد ملاحظات حالياً</p>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };

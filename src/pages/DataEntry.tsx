@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +15,25 @@ const DataEntry = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getUser();
+      setIsUserAuthenticated(!!data.user);
+      
+      if (!data.user) {
+        toast({
+          title: "تنبيه",
+          description: "يجب تسجيل الدخول لحفظ البيانات",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    checkAuth();
+  }, [toast]);
   
   return (
     <div className="container mx-auto py-6">
@@ -50,6 +68,7 @@ const DataEntry = () => {
         <TabsContent value="performance" className="mt-6">
           <PerformanceMetricsForm 
             period={period}
+            isUserAuthenticated={isUserAuthenticated}
             onSubmit={async (data) => {
               try {
                 // تجهيز البيانات للحفظ في قاعدة البيانات
@@ -65,12 +84,20 @@ const DataEntry = () => {
                 }));
                 
                 // حفظ البيانات في قاعدة البيانات
-                await saveMetrics(metricsForDb);
+                const success = await saveMetrics(metricsForDb);
                 
-                toast({
-                  title: "تم الحفظ",
-                  description: `تم حفظ بيانات مؤشرات الأداء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-                });
+                if (success) {
+                  toast({
+                    title: "تم الحفظ",
+                    description: `تم حفظ بيانات مؤشرات الأداء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                  });
+                } else {
+                  toast({
+                    title: "تنبيه",
+                    description: "تم حفظ البيانات محليًا فقط. سيتم مزامنتها مع قاعدة البيانات عند تسجيل الدخول",
+                    variant: "destructive",
+                  });
+                }
                 
                 // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
                 navigate('/dashboard');
@@ -89,15 +116,24 @@ const DataEntry = () => {
         <TabsContent value="service" className="mt-6">
           <ServiceMetricsForm 
             period={period}
+            isUserAuthenticated={isUserAuthenticated}
             onSubmit={async (data) => {
               try {
                 // حفظ البيانات في قاعدة البيانات
-                await saveServiceData(data, period);
+                const success = await saveServiceData(data, period);
                 
-                toast({
-                  title: "تم الحفظ",
-                  description: `تم حفظ بيانات خدمة العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-                });
+                if (success) {
+                  toast({
+                    title: "تم الحفظ",
+                    description: `تم حفظ بيانات خدمة العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                  });
+                } else {
+                  toast({
+                    title: "تنبيه",
+                    description: "تم حفظ البيانات محليًا فقط. سيتم مزامنتها مع قاعدة البيانات عند تسجيل الدخول",
+                    variant: "destructive",
+                  });
+                }
                 
                 // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
                 navigate('/dashboard');
@@ -116,15 +152,24 @@ const DataEntry = () => {
         <TabsContent value="satisfaction" className="mt-6">
           <SatisfactionForm 
             period={period}
+            isUserAuthenticated={isUserAuthenticated}
             onSubmit={async (data) => {
               try {
                 // حفظ البيانات في قاعدة البيانات
-                await saveSatisfactionData(data, period);
+                const success = await saveSatisfactionData(data, period);
                 
-                toast({
-                  title: "تم الحفظ",
-                  description: `تم حفظ بيانات رضا العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
-                });
+                if (success) {
+                  toast({
+                    title: "تم الحفظ",
+                    description: `تم حفظ بيانات رضا العملاء ${period === 'weekly' ? 'الأسبوعية' : 'السنوية'} بنجاح`,
+                  });
+                } else {
+                  toast({
+                    title: "تنبيه",
+                    description: "تم حفظ البيانات محليًا فقط. سيتم مزامنتها مع قاعدة البيانات عند تسجيل الدخول",
+                    variant: "destructive",
+                  });
+                }
                 
                 // الانتقال إلى لوحة التحكم لمشاهدة التغييرات
                 navigate('/dashboard');
@@ -146,10 +191,11 @@ const DataEntry = () => {
 
 interface FormProps {
   period: 'weekly' | 'yearly';
+  isUserAuthenticated: boolean;
   onSubmit: (data: any) => void;
 }
 
-const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
+const PerformanceMetricsForm = ({ period, isUserAuthenticated, onSubmit }: FormProps) => {
   // Define initial metrics
   const initialWeeklyMetrics = [
     { id: 'deliveryQuality', label: 'جودة التسليم', goal: 100, value: 98, achieved: true },
@@ -181,7 +227,7 @@ const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
     { id: 'conversionRate', label: 'معدل التحول', goal: 2.5, value: 2.3, achieved: true },
   ];
   
-  // Load saved data from localStorage based on period
+  // Load saved data from localStorage or fetch from API based on period
   const [metrics, setMetrics] = useState(() => {
     const storageKey = `performanceMetrics_${period}`;
     const savedData = localStorage.getItem(storageKey);
@@ -204,6 +250,9 @@ const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Save to localStorage first as backup
+    const storageKey = `performanceMetrics_${period}`;
+    localStorage.setItem(storageKey, JSON.stringify(metrics));
     onSubmit(metrics);
   };
   
@@ -248,6 +297,12 @@ const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
         مؤشرات الأداء الرئيسية - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
       </h2>
       
+      {!isUserAuthenticated && (
+        <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4">
+          تنبيه: أنت غير مسجل الدخول. سيتم حفظ البيانات محلياً فقط وقد تفقد عند مسح ذاكرة المتصفح.
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {metrics.map((metric) => {
           const status = getAchievementStatus(metric.value, metric.goal);
@@ -286,7 +341,7 @@ const PerformanceMetricsForm = ({ period, onSubmit }: FormProps) => {
   );
 };
 
-const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
+const ServiceMetricsForm = ({ period, isUserAuthenticated, onSubmit }: FormProps) => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -323,6 +378,9 @@ const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Save to localStorage first as backup
+    const storageKey = `serviceData_${period}`;
+    localStorage.setItem(storageKey, JSON.stringify(categories));
     onSubmit(categories);
   };
 
@@ -335,6 +393,12 @@ const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
       <h2 className="text-xl font-bold">
         بيانات خدمة العملاء - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
       </h2>
+      
+      {!isUserAuthenticated && (
+        <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4">
+          تنبيه: أنت غير مسجل الدخول. سيتم حفظ البيانات محلياً فقط وقد تفقد عند مسح ذاكرة المتصفح.
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {categories.map((category, categoryIndex) => (
@@ -374,7 +438,7 @@ const ServiceMetricsForm = ({ period, onSubmit }: FormProps) => {
   );
 };
 
-const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
+const SatisfactionForm = ({ period, isUserAuthenticated, onSubmit }: FormProps) => {
   const [satisfactionData, setSatisfactionData] = useState<SatisfactionData>({
     categories: [],
     comments: ''
@@ -417,6 +481,9 @@ const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Save to localStorage first as backup
+    const storageKey = `satisfactionData_${period}`;
+    localStorage.setItem(storageKey, JSON.stringify(satisfactionData));
     onSubmit(satisfactionData);
   };
 
@@ -429,6 +496,12 @@ const SatisfactionForm = ({ period, onSubmit }: FormProps) => {
       <h2 className="text-xl font-bold">
         بيانات رضا العملاء - {period === 'weekly' ? 'أسبوعي' : 'سنوي'}
       </h2>
+      
+      {!isUserAuthenticated && (
+        <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md mb-4">
+          تنبيه: أنت غير مسجل الدخول. سيتم حفظ البيانات محلياً فقط وقد تفقد عند مسح ذاكرة المتصفح.
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {satisfactionData.categories.map((category, categoryIndex) => (
