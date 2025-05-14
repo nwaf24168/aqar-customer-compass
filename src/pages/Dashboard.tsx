@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { fetchMetrics } from '@/services/metrics-service';
 import { supabase } from '@/integrations/supabase/client';
 import { Metric } from '@/types';
+import { convertServiceDataToFormat, calculateSatisfactionPercentages } from '@/utils/dashboard-utils';
 
 // This is fallback mock data that would be used when Supabase data is not available
 const defaultWeeklyMetrics = [
@@ -480,8 +481,6 @@ const convertLocalStorageMetricsToFormat = (formMetrics: any[]): any[] => {
   
   return metrics;
 };
-
-// ... keep existing code (remaining helper functions)
 
 const Dashboard = () => {
   const [period, setPeriod] = useState<'weekly' | 'yearly'>('weekly');
