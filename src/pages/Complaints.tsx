@@ -9,7 +9,8 @@ import {
   DialogHeader, 
   DialogTitle,
   DialogTrigger,
-  DialogClose
+  DialogClose,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { 
   DropdownMenu, 
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Complaint } from '@/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const mockComplaints: Complaint[] = [
   {
@@ -159,7 +161,11 @@ const Complaints = () => {
   const handleEditComplaint = (complaint: Complaint) => {
     const updatedComplaints = complaints.map(c => 
       c.id === complaint.id 
-        ? { ...complaint, updatedBy: 'nawaf', updatedAt: new Date().toISOString().split('T')[0] } 
+        ? { 
+            ...complaint, 
+            updatedBy: 'nawaf', // Set the current user as updater
+            updatedAt: new Date().toISOString().split('T')[0] // Set current date
+          } 
         : c
     );
     setComplaints(updatedComplaints);
@@ -193,6 +199,7 @@ const Complaints = () => {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>إضافة شكوى جديدة</DialogTitle>
+              <DialogDescription>أدخل تفاصيل الشكوى الجديدة</DialogDescription>
             </DialogHeader>
             <ComplaintForm 
               onSubmit={(data) => handleAddComplaint(data)} 
@@ -237,30 +244,30 @@ const Complaints = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-right py-3 px-4 font-medium">رقم الشكوى</th>
-                <th className="text-right py-3 px-4 font-medium">التاريخ</th>
-                <th className="text-right py-3 px-4 font-medium">اسم العميل</th>
-                <th className="text-right py-3 px-4 font-medium">المشروع</th>
-                <th className="text-right py-3 px-4 font-medium">الحالة</th>
-                <th className="text-right py-3 px-4 font-medium">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-right">رقم الشكوى</TableHead>
+                <TableHead className="text-right">التاريخ</TableHead>
+                <TableHead className="text-right">اسم العميل</TableHead>
+                <TableHead className="text-right">المشروع</TableHead>
+                <TableHead className="text-right">الحالة</TableHead>
+                <TableHead className="text-right">الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {complaints.map((complaint) => (
-                <tr key={complaint.id} className="border-b border-border hover:bg-secondary/30">
-                  <td className="py-3 px-4">{complaint.complaintNumber}</td>
-                  <td className="py-3 px-4">{complaint.createdAt}</td>
-                  <td className="py-3 px-4">{complaint.clientName}</td>
-                  <td className="py-3 px-4">{complaint.project}</td>
-                  <td className="py-3 px-4">
+                <TableRow key={complaint.id} className="hover:bg-secondary/30">
+                  <TableCell>{complaint.complaintNumber}</TableCell>
+                  <TableCell>{complaint.createdAt}</TableCell>
+                  <TableCell>{complaint.clientName}</TableCell>
+                  <TableCell>{complaint.project}</TableCell>
+                  <TableCell>
                     <span className={`inline-block px-3 py-1 rounded-full text-xs ${statusColors[complaint.status] || 'bg-gray-500/20 text-gray-500'}`}>
                       {complaint.status}
                     </span>
-                  </td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 
@@ -309,11 +316,11 @@ const Complaints = () => {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </Card>
 
@@ -424,6 +431,31 @@ const Complaints = () => {
                         <p className="font-medium">{selectedComplaint.createdBy}</p>
                       </div>
                     </div>
+
+                    {/* Add the updated information */}
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-full bg-blue-500/20 text-blue-500">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">تاريخ آخر تحديث</p>
+                        <p className="font-medium">{selectedComplaint.updatedAt}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-full bg-purple-500/20 text-purple-500">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">تم التحديث بواسطة</p>
+                        <p className="font-medium">{selectedComplaint.updatedBy}</p>
+                      </div>
+                    </div>
                   </Card>
                 </div>
               </div>
@@ -461,6 +493,7 @@ const Complaints = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>تعديل الشكوى #{selectedComplaint?.complaintNumber}</DialogTitle>
+            <DialogDescription>قم بتعديل تفاصيل الشكوى</DialogDescription>
           </DialogHeader>
           {selectedComplaint && (
             <ComplaintForm 

@@ -1,6 +1,6 @@
 
 import { ServiceCategory } from '@/services/service-data-service';
-import { SatisfactionData } from '@/services/satisfaction-service';
+import { SatisfactionCategory } from '@/services/satisfaction-service';
 
 /**
  * Converts service data categories to a format suitable for the dashboard
@@ -23,20 +23,24 @@ export const convertServiceDataToFormat = (serviceData: ServiceCategory[]) => {
 /**
  * Calculates satisfaction percentages from satisfaction data
  */
-export const calculateSatisfactionPercentages = (data: SatisfactionData) => {
+export const calculateSatisfactionPercentages = (data: { categories: SatisfactionCategory[] }) => {
   if (!data || !data.categories) {
     return [];
   }
   
   return data.categories.map(category => {
+    const metrics = category.metrics || [];
+    
     // Calculate total responses
-    const total = Object.values(category.values).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const total = metrics.reduce((sum, metric) => sum + (metric.value || 0), 0);
     
     // Calculate positive responses (very good + good)
-    const positiveResponses = (Number(category.values.veryGood) || 0) + (Number(category.values.good) || 0);
+    const positiveResponses = metrics
+      .filter(metric => metric.id === 'veryGood' || metric.id === 'good')
+      .reduce((sum, metric) => sum + (metric.value || 0), 0);
     
     // Calculate percentage
-    const percentage = total > 0 ? ((positiveResponses / total) * 100).toFixed(1) + '%' : '0%';
+    const percentage = total > 0 ? `${((positiveResponses / total) * 100).toFixed(1)}%` : '0%';
     
     return {
       title: category.title,
