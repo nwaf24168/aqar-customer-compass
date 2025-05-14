@@ -34,7 +34,9 @@ import {
   Plus, 
   Search, 
   ArrowDownUp, 
-  Filter 
+  Filter,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Complaint } from '@/types';
@@ -159,15 +161,30 @@ const Complaints = () => {
   };
 
   const handleEditComplaint = (complaint: Complaint) => {
+    const previousStatus = complaints.find(c => c.id === complaint.id)?.status;
+    const now = new Date().toISOString().split('T')[0];
+    
+    let updateNote = '';
+    
+    // Add update history information
+    if (previousStatus && previousStatus !== complaint.status) {
+      updateNote = `[${now}] تم تغيير الحالة من "${previousStatus}" إلى "${complaint.status}" بواسطة nawaf\n`;
+    } else {
+      updateNote = `[${now}] تم تحديث الشكوى بواسطة nawaf\n`;
+    }
+    
     const updatedComplaints = complaints.map(c => 
       c.id === complaint.id 
         ? { 
             ...complaint, 
-            updatedBy: 'nawaf', // Set the current user as updater
-            updatedAt: new Date().toISOString().split('T')[0] // Set current date
+            updatedBy: 'nawaf',
+            updatedAt: now,
+            // Append the update note to the existing action
+            action: updateNote + (complaint.action || '')
           } 
         : c
     );
+    
     setComplaints(updatedComplaints);
     setIsEditDialogOpen(false);
     toast({
@@ -471,11 +488,35 @@ const Complaints = () => {
                 </div>
                 
                 <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">الإجراء المتخذ</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <span>سجل التحديثات والإجراءات</span>
+                  </h3>
                   <Card className="p-4">
-                    <p className="whitespace-pre-wrap">
-                      {selectedComplaint.action || 'لا توجد إجراءات مضافة.'}
-                    </p>
+                    {selectedComplaint.action ? (
+                      <div className="space-y-2">
+                        {selectedComplaint.action.split('\n').filter(Boolean).map((line, index) => {
+                          // Try to extract the date and time from lines like "[2025-01-01] تم تغيير..."
+                          const dateMatch = line.match(/^\[(.*?)\]/);
+                          const date = dateMatch ? dateMatch[1] : null;
+                          const content = dateMatch ? line.replace(dateMatch[0], '').trim() : line;
+                          
+                          return (
+                            <div key={index} className={index !== 0 ? "pt-2 border-t border-border" : ""}>
+                              {date && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{date}</span>
+                                </div>
+                              )}
+                              <p className="text-sm">{content}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">لا توجد إجراءات أو تحديثات مسجلة.</p>
+                    )}
                   </Card>
                 </div>
               </div>
